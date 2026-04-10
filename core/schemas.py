@@ -67,9 +67,11 @@ class ProjectEntry(BaseModel):
     title: str
     description: str
     technologies: list[str] = Field(default_factory=list)
+    tech_stack: list[str] = Field(default_factory=list)        # verified technologies from clarifications
     metrics: list[str] = Field(default_factory=list)          # quantifiable claims
     duration: Optional[str] = None
     is_experience_mislabeled: bool = False                    # mismatch flag
+    project_type: str = ""  # competition | academic | personal | open-source | freelance | (empty = unknown)
 
 
 class ExperienceEntry(BaseModel):
@@ -80,13 +82,14 @@ class ExperienceEntry(BaseModel):
     responsibilities: list[str] = Field(default_factory=list)
     technologies: list[str] = Field(default_factory=list)
     is_project_mislabeled: bool = False                       # mismatch flag
+    experience_type: str = ""  # internship | workshop | job | competition | freelance | (empty = unknown)
 
 
 class EducationEntry(BaseModel):
     institution: str
     degree: str
     field: Optional[str] = None
-    graduation_year: Optional[int] = None
+    graduation_year: Optional[Any] = None   # int (2023), str ("2023 – Present"), or None
     gpa: Optional[str] = None
 
     @field_validator("gpa", mode="before")
@@ -129,6 +132,8 @@ class ParsedResume(BaseModel):
     years_of_experience: float = 0.0
     project_count: int = 0
     experience_count: int = 0
+    school_10th: Optional[str] = None
+    school_12th: Optional[str] = None
 
 
 # ─────────────────────────────────────────────
@@ -162,7 +167,7 @@ class BackendPayload(BaseModel):
 
     # ── Raw inputs ──────────────────────────────
     resume_raw_text: str                          = Field(..., description="PDF/DOCX → plain text")
-    job_description_raw_text: str                 = Field(..., description="Raw JD text")
+    job_description_raw_text: Optional[str]       = Field(None, description="Raw JD text (optional, uses dataset if null)")
     target_role: str                              = Field(..., description="Role being applied to")
 
     # ── Parsed structures ────────────────────────
@@ -201,8 +206,14 @@ class SmartResumeResponse(BaseModel):
 
     # Sections
     structured_extraction: dict[str, Any]        = Field(default_factory=dict)
-    skill_classification: dict[str, list[str]]   = Field(default_factory=dict)
-    job_match_analysis: dict[str, Any]           = Field(default_factory=dict)
+    skill_classification: dict[str, list[str]]   = Field(
+        default_factory=dict,
+        description="Must contain: programming_languages, frameworks_libraries, tools_platforms, databases, soft_skills"
+    )
+    job_match_analysis: dict[str, Any]           = Field(
+        default_factory=dict,
+        description="Must contain: score, verdict, matched_skills, missing_skills, evidence_bullets"
+    )
     doubt_detection: dict[str, Any]              = Field(default_factory=dict)
     proficiency_consistency: dict[str, Any]      = Field(default_factory=dict)
     factual_evaluation: dict[str, Any]           = Field(default_factory=dict)
@@ -210,6 +221,7 @@ class SmartResumeResponse(BaseModel):
     resume_quality_assessment: dict[str, Any]    = Field(default_factory=dict)
     template_selection: dict[str, Any]           = Field(default_factory=dict)
     final_resume: Optional[str]                  = None
+    latex_template: Optional[str]                = None
     career_improvement_plan: dict[str, Any]      = Field(default_factory=dict)
     skill_gap_analysis: dict[str, Any]           = Field(default_factory=dict)
 
@@ -217,3 +229,15 @@ class SmartResumeResponse(BaseModel):
     clarification_required: bool                 = False
     clarification_questions: list[str]           = Field(default_factory=list)
     mismatch_corrections: list[str]              = Field(default_factory=list)  # project↔experience fixes
+
+    # STEP X — Missing profile / academic info questions
+    missing_profile_detection: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="STEP X: Questions about missing GitHub, LinkedIn, CGPA, certs, etc.",
+    )
+
+    # STEP Y — Applied change log after profile answers are verified
+    profile_change_log: list[str]                = Field(
+        default_factory=list,
+        description="STEP Y: Human-readable log of changes applied from profile answers.",
+    )

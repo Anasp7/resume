@@ -217,6 +217,68 @@ def parse_job_description(raw_jd: str, target_role: str) -> ParsedJobDescription
     )
 
 
+def parse_job_description_optional(
+    raw_jd: Optional[str],
+    target_role: str
+) -> ParsedJobDescription:
+    """
+    Parse job description, handling null/empty case.
+    
+    If raw_jd is provided: Extract from actual JD text
+    If raw_jd is None/empty: Extract skills from job role dataset
+    
+    Args:
+        raw_jd: Raw job description text or None
+        target_role: Target job role (always required)
+    
+    Returns:
+        ParsedJobDescription with extracted or dataset-based skills
+    """
+    from core.job_role_dataset import (
+        get_skills_for_role,
+        generate_synthetic_jd,
+    )
+    
+    # If JD is provided, use it directly
+    if raw_jd and raw_jd.strip():
+        return parse_job_description(raw_jd, target_role)
+    
+    # JD not provided: Extract from dataset based on target_role
+    logger.info(f"No JD provided; using dataset skills for role: {target_role}")
+    
+    skills_data = get_skills_for_role(target_role)
+    if skills_data:
+        # Use skills from dataset
+        synthetic_jd = generate_synthetic_jd(target_role)
+        
+        return ParsedJobDescription(
+            raw_text=synthetic_jd,
+            target_role=target_role,
+            detected_domain=Domain(skills_data.get("domain", "Unknown")),
+            required_skills=skills_data.get("required_skills", []),
+            preferred_skills=skills_data.get("preferred_skills", []),
+            required_experience_years=0,  # No years specified in dataset
+            key_responsibilities=[
+                "Develop and maintain high-quality software",
+                "Collaborate with cross-functional teams",
+                "Participate in code reviews",
+                "Optimize for performance and scalability",
+            ],
+        )
+    
+    # Role not in dataset: Return minimal parsed description
+    logger.warning(f"Role not found in dataset: {target_role}. Using empty skills.")
+    return ParsedJobDescription(
+        raw_text=f"Job role: {target_role} (no description provided)",
+        target_role=target_role,
+        detected_domain=Domain.UNKNOWN,
+        required_skills=[],
+        preferred_skills=[],
+        required_experience_years=0,
+        key_responsibilities=[],
+    )
+
+
 def _detect_domain(text: str) -> Domain:
     text_lower = text.lower()
     scores: dict[Domain, int] = {}
@@ -342,6 +404,7 @@ def compute_weighted_score(
     required_skills: list,
     years_of_experience: float,
     required_experience_years: Optional[float],
+    **kwargs
 ) -> dict:
     """
     Phase 3 — Deterministic weighted scoring formula.
@@ -372,11 +435,25 @@ def compute_weighted_score(
     else:
         exp_component = 75.0  # no experience requirement → neutral
 
+    # Component 4: Factual Grounding (Evidence)
+    # Penalize if skills are claimed but NOT found in descriptions
+    # evidence_scores is dict[skill, {evidence: 0-3}]
+    evidence_found_count = 0
+    if kwargs.get("evidence_scores"):
+        ev_scores = kwargs["evidence_scores"]
+        matched_with_evidence = [s for s in matched_skills if ev_scores.get(s.lower(), {}).get("evidence", 0) > 0]
+        evidence_found_count = len(matched_with_evidence)
+        grounding_score = (evidence_found_count / len(matched_skills) * 100) if matched_skills else 100
+    else:
+        grounding_score = 100 # No info, skip penalty
+
     # Weighted blend
+    # Adjust weights: 30% Skill, 30% Sim, 20% Exp, 20% Grounding
     final_score = (
-        0.40 * skill_overlap +
-        0.35 * sim_component +
-        0.25 * exp_component
+        0.30 * skill_overlap +
+        0.30 * sim_component +
+        0.20 * exp_component +
+        0.20 * grounding_score
     )
     final_score = round(min(final_score, 99.0), 1)
 
@@ -405,24 +482,16 @@ def compute_weighted_score(
 
 
 def compute_proficiency_evidence_scores(
-    user_proficiencies: list,   # list[SkillProficiency]
     parsed_resume: ParsedResume,
+    skills_or_proficiencies: list,   # list[SkillProficiency] or list[str]
 ) -> dict[str, dict]:
     """
-    For each declared skill+proficiency, count evidence level (0–3)
-    across projects and experience.
+    For each skill, count evidence level (0–3) across projects and experience.
 
     Returns: { skill_name: { "declared": level, "evidence": 0-3, "gap": int } }
     The AI uses this dict for reasoning — never re-computes it.
     """
-    from core.schemas import ProficiencyLevel
-
-    _LEVEL_EXPECTED: dict[ProficiencyLevel, int] = {
-        ProficiencyLevel.BEGINNER:     0,  # beginner needs no project evidence
-        ProficiencyLevel.INTERMEDIATE: 2,
-        ProficiencyLevel.ADVANCED:     2,
-        ProficiencyLevel.EXPERT:       3,
-    }
+    from core.schemas import ProficiencyLevel, SkillProficiency
 
     all_text_chunks: list[str] = []
     for proj in parsed_resume.projects:
@@ -435,8 +504,14 @@ def compute_proficiency_evidence_scores(
     combined = " ".join(all_text_chunks).lower()
 
     results = {}
-    for sp in user_proficiencies:
-        skill = sp.skill_name.lower()
+    for item in skills_or_proficiencies:
+        if isinstance(item, SkillProficiency):
+            skill = item.skill_name.lower()
+            level = item.level
+        else:
+            skill = str(item).lower()
+            level = ProficiencyLevel.INTERMEDIATE
+
         pattern = r"(?<![a-z0-9])" + re.escape(skill) + r"(?![a-z0-9])"
         occurrences = len(re.findall(pattern, combined))
 
@@ -450,11 +525,17 @@ def compute_proficiency_evidence_scores(
         else:
             evidence = 3
 
-        expected = _LEVEL_EXPECTED[sp.level]
-        gap = max(0, expected - evidence)  # 0 = aligned, >0 = under-evidenced
+        _LEVEL_EXPECTED = {
+            ProficiencyLevel.BEGINNER:     0,
+            ProficiencyLevel.INTERMEDIATE: 2,
+            ProficiencyLevel.ADVANCED:     2,
+            ProficiencyLevel.EXPERT:       3,
+        }
+        expected = _LEVEL_EXPECTED.get(level, 2)
+        gap = max(0, expected - evidence)
 
         results[skill] = {
-            "declared":  sp.level.value,
+            "declared":  level.value if hasattr(level, "value") else str(level),
             "evidence":  evidence,
             "expected":  expected,
             "gap":       gap,

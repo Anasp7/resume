@@ -21,6 +21,7 @@ nltk==3.8.1
 # Embeddings (semantic similarity — enabled by default)
 # To activate: add SMART_RESUME_USE_ST=1 to your .env
 # First run downloads the model (~90MB) automatically
+numpy<2.0.0
 sentence-transformers==3.0.1
 
 # Streamlit UI

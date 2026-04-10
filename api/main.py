@@ -19,7 +19,7 @@ from typing import Annotated, Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from core.parser import parse_document
 from core.schemas import (
@@ -34,7 +34,7 @@ from core.similarity import (
     compute_similarity,
     decide_needs_optimization,
     decide_template,
-    parse_job_description,
+    parse_job_description_optional,
 )
 
 # ─── Logging ─────────────────────────────────────────────────────────────────
@@ -252,7 +252,7 @@ async def health():
 @app.post("/analyze", response_model=BackendPayload)
 async def analyze(
     resume_file: UploadFile                 = File(..., description="Resume PDF, DOCX, or TXT"),
-    job_description: str                    = Form(..., description="Full job description text"),
+    job_description: Optional[str]          = Form(None, description="Full job description text (optional)"),
     target_role: str                        = Form(..., description="Role being applied to"),
     proficiency_json: Optional[str]         = Form(None, description='JSON: [{"skill_name":"python","level":"Advanced"}]'),
 ):
@@ -282,7 +282,7 @@ async def analyze(
     parsed_resume = _build_parsed_resume(parser_output)
 
     # ── Parse JD ─────────────────────────────────────────────────────────────
-    parsed_jd = parse_job_description(job_description, target_role)
+    parsed_jd = parse_job_description_optional(job_description, target_role)
 
     # ── Proficiencies ─────────────────────────────────────────────────────────
     user_proficiencies: list[SkillProficiency] = []
@@ -304,14 +304,14 @@ async def analyze(
     needs_optimization = decide_needs_optimization(similarity_score)
 
     # Proficiency-evidence numeric scores
-    _ = compute_proficiency_evidence_scores(user_proficiencies, parsed_resume)
+    _ = compute_proficiency_evidence_scores(parsed_resume, user_proficiencies)
     # (stored in payload implicitly via user_proficiencies; full scores sent to AI in prompt)
 
     # ── Assemble payload ──────────────────────────────────────────────────────
     session_id = str(uuid.uuid4())
     payload = BackendPayload(
         resume_raw_text=parser_output["raw_text"],
-        job_description_raw_text=job_description,
+        job_description_raw_text=job_description or parsed_jd.raw_text,
         target_role=target_role,
         parsed_resume=parsed_resume,
         parsed_jd=parsed_jd,
@@ -359,3 +359,35 @@ async def get_session(session_id: str):
     if session_id not in _sessions:
         raise HTTPException(status_code=404, detail="Session not found.")
     return _sessions[session_id]
+
+
+# ─── Career Growth Endpoints ──────────────────────────────────────────────────
+
+class CareerDetectRequest(BaseModel):
+    resume_text: str
+    parsed_resume_dict: dict
+
+@app.post("/career/detect")
+async def detect_career(req: CareerDetectRequest):
+    """Detect suitable career roles based on resume data."""
+    from core.growth.recommender import detect_all_suitable_roles
+    roles, level, analysis = detect_all_suitable_roles(req.parsed_resume_dict, req.resume_text)
+    return {"roles": roles, "level": level, "analysis": analysis}
+
+class CareerPlanRequest(BaseModel):
+    resume_text: str
+    parsed_resume_dict: dict
+    selected_roles: list
+    career_level: str
+
+@app.post("/career/plan")
+async def generate_career_plan(req: CareerPlanRequest):
+    """Generate a detailed short/medium/long term career growth plan."""
+    from core.growth.recommender import generate_detailed_growth_plan
+    plan = generate_detailed_growth_plan(
+        resume_data=req.parsed_resume_dict,
+        selected_roles=req.selected_roles,
+        raw_resume_text=req.resume_text,
+        career_level=req.career_level
+    )
+    return plan

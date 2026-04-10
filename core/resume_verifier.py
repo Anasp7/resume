@@ -1,28 +1,40 @@
 """
-Smart Resume — Resume Verifier v2
+Smart Resume — Resume Verifier v3
 ===================================
 Post-generation pass that checks generated resume against original content.
 
-Two layers of protection:
-  1. Skill fabrication check — any tech term in the generated resume that does
-     NOT appear in the candidate's original content gets flagged and removed.
-  2. Hardcoded bad-phrase removal — generic filler, soft-skill preamble, etc.
-  3. Format fixes — section headings, "Not Specified", blank lines.
+Changes from v2:
+- No longer removes entire lines for fabricated terms — only removes the term inline
+- Role-description terms (machine learning, deep learning, etc.) are NEVER removed
+  even if not in original resume — they describe the target role, not invented experience
+- Flask/FastAPI etc. checked against full project description text not just skills list
+- Soft-skill phrase removal kept but gentler (removes phrase, not whole sentence)
 """
 
 from __future__ import annotations
 import re
 import logging
-from typing import Optional
 
 logger = logging.getLogger("smart_resume.verifier")
 
-# ── Tech terms that the verifier watches for fabrication ──────────────────────
-# Subset of KNOWN_TECH_TERMS — only specific/unambiguous names worth checking
+# ── Terms that are NEVER fabrication — they describe the role being applied for ──
+# These appear naturally in objectives/summaries even if not in original resume.
+ROLE_DESCRIPTION_TERMS = {
+    "machine learning", "deep learning", "artificial intelligence", "ai",
+    "data science", "data analysis", "natural language processing", "nlp",
+    "computer vision", "robotics", "automation", "software engineering",
+    "backend development", "frontend development", "full stack",
+    "embedded systems", "control systems", "autonomous systems",
+    "software developer", "software engineer", "data scientist",
+    "ml engineer", "robotics engineer", "backend developer",
+}
+
+# ── Tech terms worth checking for fabrication ────────────────────────────────
+# Only specific unambiguous framework/library names — NOT general CS terms
 WATCHLIST_TERMS = {
     "tensorflow", "pytorch", "keras", "scikit-learn", "sklearn", "xgboost",
     "langchain", "llamaindex", "openai", "huggingface", "transformers",
-    "opencv", "spacy", "nltk", "gensim",
+    "spacy", "nltk", "gensim",
     "fastapi", "flask", "django", "spring", "express", "nestjs", "laravel",
     "react", "vue", "angular", "nextjs", "svelte",
     "docker", "kubernetes", "terraform", "ansible",
@@ -35,26 +47,21 @@ WATCHLIST_TERMS = {
     "graphql", "grpc", "kafka", "rabbitmq",
     "pandas", "numpy", "scipy", "matplotlib", "seaborn", "plotly",
     "jenkins", "github actions", "gitlab ci", "argocd",
-    "prometheus", "grafana", "datadog", "elk",
+    "prometheus", "grafana", "datadog",
     "pytest", "selenium", "playwright", "cypress", "jest",
     "streamlit", "gradio", "pydantic", "sqlalchemy",
+    "opencv",
 }
 
 FABRICATION_PHRASES = [
-    r"\brelational database\b",
-    r"\bcontrol algorithm\b",
     r"\bteam player\b",
     r"\bfast learner\b",
-    r"\bself[- ]motivated\b",
-    r"\bstrong communication\b",
     r"\bpassionate about\b",
     r"\bseeking a challenging\b",
-    r"\bproblem[- ]solving skills\b",
     r"\beager to learn\b",
     r"\bquick learner\b",
-    r"\bexcellent communication\b",
-    r"\bresults[- ]driven\b",
-    r"\bdetail[- ]oriented\b",
+    r"\bexcellent communication skills\b",
+    r"\bresults[- ]driven professional\b",
 ]
 
 
@@ -66,6 +73,10 @@ def verify_resume(
     """
     Verify generated resume against original content.
     Returns (cleaned_text, list_of_issues_fixed).
+
+    Philosophy: Protect against invented tech stacks (e.g. adding PyTorch when
+    candidate never used it). Never strip role-description language or terms that
+    appear in project descriptions.
     """
     if not generated_text or not generated_text.strip():
         return generated_text, []
@@ -74,159 +85,177 @@ def verify_resume(
     text   = generated_text
 
     # ── 1. Build allowed vocabulary from original ─────────────────────────────
-    allowed_skills = set()
-    for skill in original_resume.get("skills", []):
-        allowed_skills.add(skill.lower().strip())
+    allowed_terms: set[str] = set()
 
-    # Also extract from project descriptions + experience bullets
-    all_original_text_parts = [
-        original_resume.get("summary", "") or "",
-        " ".join(
-            " ".join(e.get("responsibilities", [])) + " " + e.get("role", "")
-            if isinstance(e, dict) else
-            " ".join(e.responsibilities) + " " + e.role
-            for e in original_resume.get("experience", [])
-        ),
-        " ".join(
-            (p.get("description", "") if isinstance(p, dict) else p.description)
-            + " " +
-            " ".join(p.get("technologies", []) if isinstance(p, dict) else p.technologies)
-            for p in original_resume.get("projects", [])
-        ),
-    ]
+    for skill in original_resume.get("skills", []):
+        allowed_terms.add(skill.lower().strip())
+
+    # Collect all original text — skills, experience, projects, summary
+    original_parts = [original_resume.get("summary", "") or ""]
+
+    for e in original_resume.get("experience", []):
+        if isinstance(e, dict):
+            original_parts.append(e.get("role", ""))
+            original_parts.append(e.get("company", ""))
+            original_parts.extend(e.get("responsibilities", []))
+            original_parts.extend(e.get("technologies", []))
+        else:
+            original_parts.append(getattr(e, "role", "") or "")
+            original_parts.extend(getattr(e, "responsibilities", []) or [])
+            original_parts.extend(getattr(e, "technologies", []) or [])
+
+    for p in original_resume.get("projects", []):
+        if isinstance(p, dict):
+            original_parts.append(p.get("title", ""))
+            original_parts.append(p.get("description", ""))
+            original_parts.extend(p.get("technologies", []))
+        else:
+            original_parts.append(getattr(p, "title", "") or "")
+            original_parts.append(getattr(p, "description", "") or "")
+            original_parts.extend(getattr(p, "technologies", []) or [])
 
     # Add clarification answers — these are verified facts
     for ans in clarification_answers:
         if hasattr(ans, "answer"):
-            all_original_text_parts.append(ans.answer)
+            original_parts.append(ans.answer or "")
         elif isinstance(ans, str):
-            all_original_text_parts.append(ans)
+            original_parts.append(ans)
 
-    all_original_text = " ".join(all_original_text_parts).lower()
+    all_original_text = " ".join(str(p) for p in original_parts).lower()
 
-    # ── 1b. Extract denied techs from answers ────────────────────────────────
-    # If candidate said "c is not used", "nil", "didn't use X" → remove from resume
-    NIL_WORDS = {"nil", "none", "no", "nothing", "not used", "didn't use", "did not use",
-                 "not applicable", "n/a", "na", "not mentioned", "i didn't", "i did not",
-                 "not related", "not relevant", "never used"}
-    denied_techs = set()
+    # Pre-populate allowed_terms from all original text tokens
+    for word in re.findall(r"[a-z][a-z0-9+#._-]{1,20}", all_original_text):
+        allowed_terms.add(word)
+
+    # ── 2. Build denied techs from explicit denial answers ────────────────────
+    NIL_WORDS = {"nil","none","no","nothing","not used","didn't use","did not use",
+                 "not applicable","n/a","na","not mentioned","i didn't","i did not",
+                 "not related","not relevant","never used"}
+    denied_techs: set[str] = set()
     for ca in clarification_answers:
-        ans = ca.answer.strip().lower() if hasattr(ca, 'answer') else str(ca).lower()
+        ans = (ca.answer.strip().lower() if hasattr(ca, "answer") else str(ca).lower())
         if ans in NIL_WORDS or len(ans) <= 3:
             continue
-        # Extract explicit denials
-        import re as _re2
-        for pat in [r"(\w[\w+#]*)\s+is\s+not\s+used",
-                    r"(\w[\w+#]*)\s+not\s+used",
-                    r"didn.t\s+use\s+(\w[\w+#]*)",
-                    r"did\s+not\s+use\s+(\w[\w+#]*)",
-                    r"not\s+using\s+(\w[\w+#]*)",
-                    r"(\w[\w+#]*)\s+not\s+(?:in|for|used\s+in)"]:
-            for m in _re2.finditer(pat, ans):
-                denied_techs.add(m.group(1).strip())
+        for pat in [
+            r"(\w[\w+#]*)\s+is\s+not\s+used",
+            r"(\w[\w+#]*)\s+not\s+used",
+            r"didn.t\s+use\s+(\w[\w+#]*)",
+            r"did\s+not\s+use\s+(\w[\w+#]*)",
+            r"not\s+using\s+(\w[\w+#]*)",
+        ]:
+            for m in re.finditer(pat, ans):
+                denied_techs.add(m.group(1).strip().lower())
 
-    # Strip denied techs from generated text (remove entire line)
-    if denied_techs:
-        for term in denied_techs:
+    # Remove denied techs inline (not whole line)
+    for term in denied_techs:
+        count_before = len(re.findall(re.escape(term), text, re.IGNORECASE))
+        if count_before:
             text = re.sub(
-                r"^[^\n]*(?<![a-z0-9])" + re.escape(term) + r"(?![a-z0-9])[^\n]*$",
+                r",?\s*(?:using|via|with|in|and)?\s*(?<![a-zA-Z0-9])"
+                + re.escape(term) + r"(?![a-zA-Z0-9])",
                 "",
                 text,
-                flags=re.IGNORECASE | re.MULTILINE,
+                flags=re.IGNORECASE,
             )
-            issues.append(f"Removed denied tech from output: {term}")
-        text = re.sub(r"\n{3,}", "\n\n", text)
+            issues.append(f"Removed denied tech: {term}")
 
-        # ── 2. Skill fabrication check — catch any WATCHLIST term with NO evidence ─
-    # Checks EVERY tech term in generated resume against original + clarification answers
-    fabricated_skills = []
+    # ── 3. Fabrication check — WATCHLIST terms only ───────────────────────────
+    # Only flag if: term is in generated text AND not in any original content
+    # AND not a role-description term
     text_lower = text.lower()
+    fabricated: list[str] = []
 
-    # Expand WATCHLIST to also include any tech-like words in the generated resume
-    # that aren't in the watchlist (catches long-tail terms like "gazebo", "motion planning")
-    # We check every word/phrase in generated bullets against allowed content
     for term in WATCHLIST_TERMS:
+        # Skip if it's a role-description term
+        if term in ROLE_DESCRIPTION_TERMS:
+            continue
         in_generated = bool(re.search(
             r"(?<![a-z0-9])" + re.escape(term) + r"(?![a-z0-9])", text_lower
         ))
-        in_original  = bool(re.search(
-            r"(?<![a-z0-9])" + re.escape(term) + r"(?![a-z0-9])", all_original_text
-        )) or term in allowed_skills
+        if not in_generated:
+            continue
+        in_original = (
+            term in allowed_terms or
+            bool(re.search(
+                r"(?<![a-z0-9])" + re.escape(term) + r"(?![a-z0-9])",
+                all_original_text,
+            ))
+        )
+        if not in_original:
+            fabricated.append(term)
 
-        if in_generated and not in_original:
-            fabricated_skills.append(term)
-
-    # ── 2b. Extended check — catch fabricated terms NOT in WATCHLIST ──────────
-    # Extract all multi-word tech-like phrases from generated bullets
-    EXTRA_TECH_PATTERNS = [
-        r"\bmotion planning\b",
-        r"\bsensor fusion\b",
-        r"\bpath planning\b",
-        r"\bobject detection\b",
-        r"\bneural network\b",
-        r"\bmachine learning\b",
-        r"\bdeep learning\b",
-        r"\bcomputer vision\b",
-        r"\bnatural language\b",
-        r"\boci\b", r"\baws\b", r"\bgcp\b", r"\bazure\b",
-        r"\bflask\b", r"\bfastapi\b", r"\bdjango\b", r"\bspring\b",
-        r"\bkubernetes\b", r"\bdocker\b", r"\bterraform\b",
-        r"\bangular\b", r"\breact\b", r"\bvue\b",
-        r"\bpytorch\b", r"\btensorflow\b", r"\bkeras\b",
-        r"\bopencv\b", r"\bspacy\b", r"\blangchain\b",
-    ]
-    for pat in EXTRA_TECH_PATTERNS:
-        m = re.search(pat, text_lower, re.IGNORECASE)
-        if m:
-            found_term = m.group().strip()
-            in_original = bool(re.search(
-                r"(?<![a-z0-9])" + re.escape(found_term) + r"(?![a-z0-9])", all_original_text
-            )) or found_term in allowed_skills
-            if not in_original and found_term not in fabricated_skills:
-                fabricated_skills.append(found_term)
-
-    if fabricated_skills:
-        logger.warning("Fabricated terms detected: %s", fabricated_skills)
-        for term in fabricated_skills:
-            # Remove entire line — use [^\r\n]* to handle Windows CRLF endings
+    if fabricated:
+        logger.warning("Fabricated terms detected: %s", fabricated)
+        for term in fabricated:
+            # Remove inline — just the term and surrounding connector words
+            # Do NOT remove entire lines — other content on the line is valid
             text = re.sub(
-                r"^[^\r\n]*(?<![a-zA-Z0-9])" + re.escape(term) + r"(?![a-zA-Z0-9])[^\r\n]*\r?$",
-                "",
-                text,
-                flags=re.IGNORECASE | re.MULTILINE,
-            )
-            # Also try phrase-level removal within a line (in case whole line has valid content too)
-            text = re.sub(
-                r",?\s*(?:utilizing|using|via|with|for|in)\s+[^,\n]*(?<![a-zA-Z0-9])"
-                + re.escape(term) + r"(?![a-zA-Z0-9])[^,\n]*",
+                r",?\s*(?:utilizing|using|leveraging|via|with|and|in|for)?\s*"
+                r"(?<![a-zA-Z0-9])" + re.escape(term) + r"(?![a-zA-Z0-9])",
                 "",
                 text,
                 flags=re.IGNORECASE,
             )
             issues.append(f"Removed fabricated term: {term}")
+        # Clean up any double spaces or orphaned punctuation
+        text = re.sub(r"  +", " ", text)
         text = re.sub(r"\n{3,}", "\n\n", text)
-        text = re.sub(r"\r\n", "\n", text)  # normalise CRLF → LF
 
-    # ── 3. Hardcoded bad-phrase removal ───────────────────────────────────────
+    # ── 4. Soft-skill phrase removal — phrase only, not whole line ────────────
     for phrase in FABRICATION_PHRASES:
         if re.search(phrase, text, re.IGNORECASE):
-            text = re.sub(
-                r"[^.!?\n]*" + phrase + r"[^.!?\n]*[.!?\n]?",
-                "",
-                text,
-                flags=re.IGNORECASE,
-            )
-            issues.append(f"Removed generic phrase matching: {phrase}")
+            text = re.sub(phrase, "", text, flags=re.IGNORECASE)
+            text = re.sub(r"  +", " ", text)
+            issues.append(f"Removed generic phrase: {phrase}")
 
-    # ── 4. Format fixes ───────────────────────────────────────────────────────
-    text = re.sub(r"^(SUMMARY|PROFILE|PROFESSIONAL SUMMARY)\s*$",
-                  "OBJECTIVE", text, flags=re.MULTILINE | re.IGNORECASE)
-    text = re.sub(r"\n+NOTE[:\s].*$", "", text, flags=re.DOTALL | re.IGNORECASE)
+    # ── 5. Format fixes ───────────────────────────────────────────────────────
+    text = re.sub(
+        r"^(SUMMARY|PROFILE|PROFESSIONAL SUMMARY)\s*$",
+        "OBJECTIVE", text,
+        flags=re.MULTILINE | re.IGNORECASE,
+    )
+    text = re.sub(r"\n+NOTE[:\s].*$",   "", text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\n+REMARK[:\s].*$", "", text, flags=re.DOTALL | re.IGNORECASE)
     text = text.replace("Not Specified", "").replace("not specified", "")
 
-    # ── 5. Clean up ───────────────────────────────────────────────────────────
+    # ── Remove ALL placeholder/empty lines ───────────────────────────────────
+    # "- " alone, "- -", "-  " etc
+    text = re.sub(r"^\s*-\s*-?\s*$", "", text, flags=re.MULTILINE)
+    # "- -" inline within a line
+    text = re.sub(r"^\s*-\s+-\s*$", "", text, flags=re.MULTILINE)
+    # Any line that is just dashes and spaces
+    text = re.sub(r"^\s*[-–]+\s*$", "", text, flags=re.MULTILINE)
+
+    # ── Remove Class X / Class XII placeholder lines ──────────────────────────
+    # "Class X: -"  "Class X:  "  "Class X: -  "
+    text = re.sub(r"^.*?Class\s*X(?:II)?[:\s]*[-–]?\s*$",
+                  "", text, flags=re.MULTILINE | re.IGNORECASE)
+    # "Class 10: -"  "Class 12: -"
+    text = re.sub(r"^.*?Class\s*(?:10|12)[:\s]*[-–]?\s*$",
+                  "", text, flags=re.MULTILINE | re.IGNORECASE)
+    # Class X/XII with just a number (hallucinated like "Class X: 10")
+    text = re.sub(r"^.*?Class\s*X(?:II)?[:\s]+\d{1,3}\s*$",
+                  "", text, flags=re.MULTILINE | re.IGNORECASE)
+
+    # ── Remove entirely empty sections ────────────────────────────────────────
+    # Section header followed only by blank lines / dash lines before next header
+    section_names = r"(?:OBJECTIVE|SUMMARY|SKILLS|TECHNICAL SKILLS|EXPERIENCE|WORK EXPERIENCE|PROJECTS|EDUCATION|CERTIFICATIONS)"
+    text = re.sub(
+        r"^(" + section_names + r")\s*\n(?:\s*\n|\s*-+\s*\n)*(?=" + section_names + r")",
+        "", text, flags=re.MULTILINE | re.IGNORECASE
+    )
+
+    # ── Fix truncated objective sentences ─────────────────────────────────────
+    # "Motivated B.Tech Computer Science student role as an ml engineer" — missing verb
+    text = re.sub(
+        r"(Motivated B\.Tech[^\n]+?)\s+role\s+as\s+an?\s+([^\n]+)",
+        r"\1 seeking a \2 position",
+        text, flags=re.IGNORECASE
+    )
+
+    # ── 6. Clean up ───────────────────────────────────────────────────────────
     text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r"\r\n", "\n", text)
     text = text.strip()
 
     if issues:

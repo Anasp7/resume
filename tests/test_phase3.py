@@ -259,12 +259,12 @@ def test_proficiency_advanced_evidenced():
         "trained pytorch model five times with pytorch pipeline using pytorch optimizer pytorch metrics"
     )
     profs = [SkillProficiency(skill_name="pytorch", level=ProficiencyLevel.ADVANCED)]
-    result = compute_proficiency_evidence_scores(profs, pr)
+    result = compute_proficiency_evidence_scores(pr, profs)
     assert result["pytorch"]["aligned"] is True
 
 def test_proficiency_beginner_no_evidence_ok():
     from core.schemas import SkillProficiency, ProficiencyLevel
     pr = _build_resume_with_projects(["docker"], "no mention of the skill at all")
     profs = [SkillProficiency(skill_name="docker", level=ProficiencyLevel.BEGINNER)]
-    result = compute_proficiency_evidence_scores(profs, pr)
+    result = compute_proficiency_evidence_scores(pr, profs)
     assert result["docker"]["gap"] == 0  # beginner needs 0 evidence

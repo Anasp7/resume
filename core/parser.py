@@ -15,6 +15,7 @@ from __future__ import annotations
 import io, re, logging
 from typing import Optional
 
+_COL_CACHE: dict = {}  # md5 → {left, right, is_two_col}
 logger = logging.getLogger("smart_resume.parser")
 
 # ── Optional imports ──────────────────────────────────────────────────────────
@@ -273,20 +274,36 @@ def extract_pdf_text(file_bytes: bytes) -> str:
                 for page in pdf.pages:
                     split_x = _find_column_split(page)
                     if split_x:
-                        left  = page.within_bbox((0,       0, split_x,    page.height))
-                        right = page.within_bbox((split_x, 0, page.width, page.height))
-                        lt    = left.extract_text(x_tolerance=3, y_tolerance=3) or ""
-                        rt    = right.extract_text(x_tolerance=3, y_tolerance=3) or ""
+                        # Add 2px overlap so characters at column boundary aren't cut
+                        left  = page.within_bbox((0,            0, split_x + 2, page.height))
+                        right = page.within_bbox((split_x - 2,  0, page.width,  page.height))
+                        lt    = left.extract_text(x_tolerance=4, y_tolerance=3) or ""
+                        rt    = right.extract_text(x_tolerance=4, y_tolerance=3) or ""
                         page_text = lt.strip() + "\n\n" + rt.strip()
                         logger.info("Two-column: left=%d right=%d chars", len(lt), len(rt))
+                        all_parts.append(("two_col", lt.strip(), rt.strip()))
                     else:
                         page_text = page.extract_text(x_tolerance=2, y_tolerance=3) or ""
                         logger.info("Single-column: %d chars", len(page_text))
-                    all_parts.append(page_text)
+                        all_parts.append(("single", page_text, ""))
 
-                text = "\n\n".join(all_parts)
+                # Build combined text and store column texts for two-col PDFs
+                left_parts  = [lt for kind, lt, rt in all_parts if kind == "two_col"]
+                right_parts = [rt for kind, lt, rt in all_parts if kind == "two_col"]
+                raw_parts   = [lt + "\n\n" + rt if kind == "two_col" else lt
+                               for kind, lt, rt in all_parts]
+                text = "\n\n".join(raw_parts)
                 if len(text.strip()) > 50:
-                    return _clean_text(text)
+                    clean = _clean_text(text)
+                    # Attach column texts to a module-level cache keyed by hash
+                    import hashlib
+                    _h = hashlib.md5(file_bytes).hexdigest()
+                    _COL_CACHE[_h] = {
+                        "left":  "\n\n".join(left_parts),
+                        "right": "\n\n".join(right_parts),
+                        "is_two_col": bool(left_parts),
+                    }
+                    return clean
                 logger.warning("pdfplumber returned very short text — trying PyMuPDF")
         except Exception as e:
             logger.warning("pdfplumber failed: %s", e)
@@ -531,14 +548,14 @@ def extract_contact_info(text: str) -> dict[str, str]:
 
     # LinkedIn
     linkedin = re.search(
-        r"(?:linkedin\.com/in/|linkedin:\s*)([a-zA-Z0-9\-_]+)", text, re.IGNORECASE
+        r"(?:linkedin\.com/in/|linkedin:\s*)(?!https?://)([a-zA-Z0-9\-_]+)", text, re.IGNORECASE
     )
     if linkedin:
         info["linkedin"] = f"linkedin.com/in/{linkedin.group(1)}"
 
     # GitHub
     github = re.search(
-        r"(?:github\.com/)([a-zA-Z0-9\-_]+)", text, re.IGNORECASE
+        r"(?:github\.com/)(?!https?://)([a-zA-Z0-9\-_]+)", text, re.IGNORECASE
     )
     if github:
         info["github"] = f"github.com/{github.group(1)}"
@@ -560,7 +577,7 @@ def extract_contact_info(text: str) -> dict[str, str]:
         loc = location.group(1).strip()
         # Filter out common false positives
         if (len(loc.split()) <= 4
-                and not re.search(r"\b(university|college|engineer|developer|student)\b", loc, re.I)
+                and not re.search(r"\b(university|college|engineer|developer|student|player|football|cricket|tennis|music|hobby|hobbies|activities|sports)\b", loc, re.I)
                 and not re.search(r"[@\d]", loc)):
             info["location"] = loc
 
@@ -842,18 +859,79 @@ def parse_document(file_bytes: bytes, filename: str) -> dict:
 
     if fn.endswith(".pdf"):
         raw_text = extract_pdf_text(file_bytes)
+        # For two-column PDFs: column-split text can truncate words at the boundary.
+        # Extract a full-page (no column split) version purely for contact info
+        # and institution name recovery — don't use it for section splitting.
+        _full_page_text = ""
+        try:
+            import pdfplumber, io as _io
+            with pdfplumber.open(_io.BytesIO(file_bytes)) as _pdf:
+                _full_page_text = "\n".join(
+                    (p.extract_text(x_tolerance=3, y_tolerance=3) or "")
+                    for p in _pdf.pages
+                )
+        except Exception:
+            pass
     elif fn.endswith((".docx", ".doc")):
         raw_text = extract_docx_text(file_bytes)
+        _full_page_text = ""
     elif fn.endswith(".txt"):
         raw_text = _clean_text(file_bytes.decode("utf-8", errors="replace"))
+        _full_page_text = ""
     else:
         raise ValueError(f"Unsupported format: {filename}. Supported: PDF, DOCX, TXT")
+
+    # ── Institution name recovery: MUST happen before sections are built ──────
+    # Two-column PDFs clip words at column boundary. Patch raw_text and _COL_CACHE
+    # using the full-page (no column split) text FIRST, then build sections.
+    if _full_page_text:
+        import re as _re2
+        # Find all complete institution names in the full (unclipped) page text
+        # Then patch any truncated version of the same name in the column-split raw_text.
+        # Strategy: find "WORD OF WORD" style institution names in full_page that end in a
+        # known institution suffix, then see if a truncated version exists in raw_text.
+        _INST_SUFFIXES = (
+            "ENGINEERING","TECHNOLOGY","POLYTECHNIC",
+            "UNIVERSITY","COLLEGE","INSTITUTE","SCHOOL","ACADEMY",
+        )
+        for _suffix_word in _INST_SUFFIXES:
+            # Find the complete institution name in full_page
+            _full_inst_pat = _re2.compile(
+                r"[A-Z][A-Z\.\s]{3,}\b" + _re2.escape(_suffix_word) + r"\b",
+                _re2.IGNORECASE
+            )
+            for _fm in _full_inst_pat.finditer(_full_page_text):
+                _full_name = _fm.group().strip()
+                # Try truncations of the suffix word (missing last 1-4 chars)
+                for _cut in range(1, min(5, len(_suffix_word)-3)):
+                    _trunc_suffix = _suffix_word[:-_cut]
+                    _trunc_name   = _full_name[:-_cut]   # e.g. "MA COLLEGE OF ENGINEERIN"
+                    # Only patch if the truncated version is literally in raw_text
+                    # and the full version is NOT already there (same context)
+                    if _trunc_name in raw_text and _full_name not in raw_text:
+                        logger.info("Recovering truncated institution: %r → %r",
+                                    _trunc_name, _full_name)
+                        raw_text = raw_text.replace(_trunc_name, _full_name)
+                        for _hash, _cols in _COL_CACHE.items():
+                            _COL_CACHE[_hash] = {
+                                "left":       _cols.get("left","").replace(_trunc_name, _full_name),
+                                "right":      _cols.get("right","").replace(_trunc_name, _full_name),
+                                "is_two_col": _cols.get("is_two_col", False),
+                            }
+                        break
+
+    # Contact: prefer full-page extraction (no column truncation)
+    contact_info = extract_contact_info(_full_page_text or raw_text)
+    if _full_page_text:
+        _ci2 = extract_contact_info(raw_text)
+        for _k, _v in _ci2.items():
+            if _k not in contact_info or len(str(_v)) > len(str(contact_info.get(_k, ""))):
+                contact_info[_k] = _v
 
     sections       = split_into_sections(raw_text)
     mismatches     = detect_section_mismatches(sections)
     inline_skills  = extract_inline_skills(raw_text)
     preprocessed   = preprocess_for_embedding(raw_text)
-    contact_info   = extract_contact_info(raw_text)
 
     logger.info(
         "Parsed '%s': sections=%s skills=%d",
