@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>API Debug Tool</h1>
+    
+    <div class="section">
+        <h3>Test Resume Upload & Analysis</h3>
+        <input type="file" id="fileInput" accept=".txt,.pdf,.docx">
+        <button onclick="testFullFlow()">Test Full Flow</button>
+        <button onclick="testDirectAnalysis()">Test Direct Analysis</button>
+    </div>
+    
+    <div class="section">
+        <h3>Results:</h3>
+        <div id="results"></div>
+    </div>
+    
+    <script>
+        const testResumeText = `John Doe
+Email: john.doe@example.com
+Phone: (555) 123-4567
+
+SKILLS:
+Python, Java, JavaScript, SQL, AWS, Docker
+
+EXPERIENCE:
+Software Engineer at Tech Company
+Developed web applications using React and Node.js
+
+EDUCATION:
+Bachelor of Science in Computer Science
+University of Technology`;
+
+        async function testFullFlow() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            let resumeText = testResumeText;
+            
+            if (file) {
+                // Upload file first
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                try {
+                    const uploadResponse = await fetch('/api/upload-resume', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const uploadData = await uploadResponse.json();
+                    
+                    if (uploadData.success) {
+                        resumeText = uploadData.resume_text;
+                        addResult('Upload', 'success', `File uploaded: ${uploadData.filename}`);
+                    } else {
+                        addResult('Upload', 'error', uploadData.error);
+                        return;
+                    }
+                } catch (error) {
+                    addResult('Upload', 'error', error.message);
+                    return;
+                }
+            }
+            
+            // Analyze resume
+            await analyzeResume(resumeText);
+        }
+        
+        async function testDirectAnalysis() {
+            await analyzeResume(testResumeText);
+        }
+        
+        async function analyzeResume(resumeText) {
+            try {
+                addResult('Analysis Request', 'info', `Sending ${resumeText.length} characters`);
+                
+                const response = await fetch('/api/analyze-resume', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ resume_text: resumeText })
+                });
+                
+                addResult('Analysis Response', 'info', `Status: ${response.status}`);
+                
+                const data = await response.json();
+                
+                addResult('Analysis Data', 'success', JSON.stringify(data, null, 2));
+                
+                if (data.success) {
+                    const analysis = data.analysis;
+                    
+                    // Test score access
+                    const scores = analysis.scores || {};
+                    addResult('Score Test', 'success', 
+                        `Overall: ${scores.overall_score || 'N/A'}, ` +
+                        `ATS: ${scores.ats_score || 'N/A'}, ` +
+                        `Keyword: ${scores.keyword_score || 'N/A'}`
+                    );
+                    
+                    // Test faults access
+                    const faults = analysis.faults || [];
+                    addResult('Faults Test', 'success', `Found ${faults.length} issues`);
+                    
+                } else {
+                    addResult('Analysis Error', 'error', data.error);
+                }
+                
+            } catch (error) {
+                addResult('Analysis Error', 'error', error.message);
+            }
+        }
+        
+        function addResult(type, status, message) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `section ${status}`;
+            div.innerHTML = `
+                <h4>${type} - ${status.toUpperCase()}</h4>
+                <pre>${message}</pre>
+            `;
+            results.appendChild(div);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,587 @@
+{% extends "base.html" %}
+
+{% block title %}Career Guidance - Resume Optimization Platform{% endblock %}
+
+{% block extra_css %}
+<style>
+    .career-card {
+        transition: all 0.3s ease;
+        border-left: 4px solid transparent;
+    }
+
+    .career-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        border-left-color: #667eea;
+    }
+
+    .growth-phase {
+        position: relative;
+        padding-left: 40px;
+    }
+
+    .growth-phase::before {
+        content: '';
+        position: absolute;
+        left: 15px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #dee2e6;
+    }
+
+    .growth-milestone {
+        position: relative;
+        background: white;
+        border: 2px solid #dee2e6;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        left: 0;
+        top: 0;
+        font-weight: bold;
+        font-size: 0.8rem;
+    }
+
+    .skill-progress {
+        height: 8px;
+        border-radius: 4px;
+        background: #e9ecef;
+        overflow: hidden;
+    }
+
+    .skill-progress .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        transition: width 1s ease;
+    }
+
+    .timeline-item {
+        position: relative;
+        padding-left: 30px;
+        margin-bottom: 20px;
+    }
+
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 5px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #667eea;
+    }
+
+    .timeline-item::after {
+        content: '';
+        position: absolute;
+        left: 4px;
+        top: 15px;
+        width: 2px;
+        height: calc(100% + 10px);
+        background: #dee2e6;
+    }
+
+    .timeline-item:last-child::after {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-5 fw-bold">Career Guidance & Growth Plan</h1>
+            <p class="lead text-muted">Get personalized career recommendations and a comprehensive growth roadmap</p>
+        </div>
+    </div>
+
+    <!-- Upload Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">Step 1: Upload Your Resume</h5>
+                    <div class="upload-area" id="uploadArea">
+                        <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                        <h5>Drop your resume here or click to browse</h5>
+                        <p class="text-muted">Supported formats: PDF, DOCX, TXT (Max 16MB)</p>
+                        <input type="file" id="resumeFile" accept=".pdf,.docx,.txt" style="display: none;">
+                        <button class="btn btn-primary mt-3" onclick="document.getElementById('resumeFile').click()">
+                            <i class="fas fa-folder-open me-2"></i> Choose File
+                        </button>
+                    </div>
+
+                    <!-- Upload Status -->
+                    <div id="uploadStatus" class="mt-3" style="display: none;">
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <span id="uploadMessage"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Career Recommendations Section -->
+    <div class="row mb-4" id="careerSection" style="display: none;">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">
+                        <i class="fas fa-briefcase me-2"></i>Recommended Career Roles
+                    </h5>
+                    <div id="careerRoles">
+                        <!-- Career roles will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">
+                        <i class="fas fa-chart-line me-2"></i>Skills Analysis
+                    </h5>
+                    <div id="skillsAnalysis">
+                        <!-- Skills analysis will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Growth Plan Section -->
+    <div class="row mb-4" id="growthSection" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-4">
+                        <i class="fas fa-route me-2"></i>Personalized Growth Plan
+                    </h5>
+
+                    <!-- Growth Timeline -->
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-calendar-day me-2"></i>Short Term (0-3 months)
+                            </h6>
+                            <div id="shortTermGoals">
+                                <!-- Short term goals will be populated here -->
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-success mb-3">
+                                <i class="fas fa-calendar-week me-2"></i>Medium Term (3-6 months)
+                            </h6>
+                            <div id="mediumTermGoals">
+                                <!-- Medium term goals will be populated here -->
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-info mb-3">
+                                <i class="fas fa-calendar me-2"></i>Long Term (6-12 months)
+                            </h6>
+                            <div id="longTermGoals">
+                                <!-- Long term goals will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Skill Roadmap Section -->
+    <div class="row mb-4" id="skillRoadmapSection" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-4">
+                        <i class="fas fa-map-marked-alt me-2"></i>Skill Development Roadmap
+                    </h5>
+                    <div id="skillRoadmap">
+                        <!-- Skill roadmap will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Certifications & Projects Section -->
+    <div class="row" id="recommendationsSection" style="display: none;">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">
+                        <i class="fas fa-certificate me-2"></i>Recommended Certifications
+                    </h5>
+                    <div id="certifications">
+                        <!-- Certifications will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">
+                        <i class="fas fa-project-diagram me-2"></i>Project Suggestions
+                    </h5>
+                    <div id="projectSuggestions">
+                        <!-- Project suggestions will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h5 id="loadingText">Processing...</h5>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let resumeText = '';
+    let resumeFilename = '';
+    let careerData = null;
+
+    // Upload functionality
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('resumeFile');
+
+    uploadArea.addEventListener('click', () => fileInput.click());
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+    });
+
+    function handleFiles(files) {
+        if (files.length === 0) return;
+
+        const file = files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // Show loading message instead of modal
+        const uploadStatus = document.getElementById('uploadStatus');
+        uploadStatus.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Uploading resume...</div>';
+        uploadStatus.style.display = 'block';
+
+        fetch('/api/upload-resume', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Store filename for career guidance
+                    resumeFilename = data.filename;
+
+                    // Show upload success
+                    const uploadMessage = document.getElementById('uploadMessage');
+                    uploadStatus.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle me-2"></i>Resume uploaded: ' + data.filename + '</div>';
+
+                    // Get career guidance automatically
+                    getCareerGuidance();
+                } else {
+                    uploadStatus.innerHTML = '<div class="alert alert-danger">Error: ' + data.error + '</div>';
+                }
+            })
+            .catch(error => {
+                uploadStatus.innerHTML = '<div class="alert alert-danger">Upload error: ' + error + '</div>';
+            });
+    }
+
+    function getCareerGuidance() {
+        // Show loading message instead of modal
+        const uploadStatus = document.getElementById('uploadStatus');
+        uploadStatus.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Analyzing career options with LLM...</div>';
+
+        fetch('/api/career-guidance', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                filename: resumeFilename
+                // resume_text will be extracted by backend from the filename
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    uploadStatus.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle me-2"></i>Analysis complete!</div>';
+                    displayCareerGuidance(data.career_guidance, data.growth_plan, data.analysis);
+                } else {
+                    uploadStatus.innerHTML = '<div class="alert alert-danger">Error: ' + data.error + '</div>';
+                }
+            })
+            .catch(error => {
+                uploadStatus.innerHTML = '<div class="alert alert-danger">Error: ' + error + '</div>';
+            });
+    }
+
+    function displayCareerGuidance(career_guidance, growth_plan, analysis) {
+        // Store data for other functions
+        careerData = {
+            career_guidance: career_guidance,
+            growth_plan: growth_plan,
+            analysis: analysis
+        };
+
+        // Show all sections
+        document.getElementById('careerSection').style.display = 'block';
+        document.getElementById('growthSection').style.display = 'block';
+        document.getElementById('skillRoadmapSection').style.display = 'block';
+        document.getElementById('recommendationsSection').style.display = 'block';
+
+        // Display career roles
+        displayCareerRoles();
+
+        // Display skills analysis
+        displaySkillsAnalysis();
+
+        // Display growth plan
+        displayGrowthPlan();
+
+        // Display skill roadmap
+        displaySkillRoadmap();
+
+        // Display recommendations
+        displayRecommendations();
+
+        // Scroll to results
+        document.getElementById('careerSection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function displayCareerRoles() {
+        const careerRoles = document.getElementById('careerRoles');
+        careerRoles.innerHTML = '';
+
+        const guidance = careerData.career_guidance;
+        // Handle both structured (CAREER ROLES:) and unstructured LLM output
+        if (guidance.includes('CAREER ROLES:')) {
+            const lines = guidance.split('\n');
+            let inRolesSection = false;
+
+            lines.forEach(line => {
+                line = line.trim();
+                if (line.toUpperCase().includes('CAREER ROLES:')) {
+                    inRolesSection = true;
+                } else if (line.toUpperCase().includes('MISSING SKILLS:') || line.toUpperCase().includes('RESUME IMPROVEMENTS:')) {
+                    inRolesSection = false;
+                } else if (inRolesSection && (line.startsWith('-') || line.startsWith('*') || /^\d+\./.test(line))) {
+                    // Clean up separators
+                    const roleStr = line.replace(/^[-*\d.]+\s*/, '').trim();
+                    const [title, ...descParts] = roleStr.split(':');
+                    const description = descParts.join(':').trim();
+
+                    addRoleCard(title, description || 'Ideal career path based on your skills.');
+                }
+            });
+        } else {
+            // Fallback for paragraph style output: just show it as a clean summary
+            careerRoles.innerHTML = `<div class="p-3 bg-light rounded">${guidance.replace(/\n/g, '<br>')}</div>`;
+        }
+    }
+
+    function addRoleCard(title, description) {
+        const careerRoles = document.getElementById('careerRoles');
+        const roleCard = `
+        <div class="career-card card mb-3 shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title text-primary fw-bold">${title}</h6>
+                <p class="card-text text-muted small">${description}</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="badge bg-soft-success text-success">Recommended Match</span>
+                    <button class="btn btn-sm btn-outline-primary" onclick="window.location.href='/resume-optimization'">Optimize for this</button>
+                </div>
+            </div>
+        </div>
+    `;
+        careerRoles.innerHTML += roleCard;
+    }
+
+    function displaySkillsAnalysis() {
+        const skillsAnalysis = document.getElementById('skillsAnalysis');
+        const analysis = careerData.analysis;
+
+        let skillsHtml = '';
+
+        // Display scores
+        const scores = analysis.scores;
+        skillsHtml += `
+        <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+                <span>Overall Score</span>
+                <span class="fw-bold">${Math.round(scores.overall_score)}%</span>
+            </div>
+            <div class="skill-progress">
+                <div class="progress-bar" style="width: ${scores.overall_score}%"></div>
+            </div>
+        </div>
+        <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+                <span>ATS Score</span>
+                <span class="fw-bold">${Math.round(scores.ats_score)}%</span>
+            </div>
+            <div class="skill-progress">
+                <div class="progress-bar" style="width: ${scores.ats_score}%"></div>
+            </div>
+        </div>
+        <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+                <span>Keyword Score</span>
+                <span class="fw-bold">${Math.round(scores.keyword_score)}%</span>
+            </div>
+            <div class="skill-progress">
+                <div class="progress-bar" style="width: ${scores.keyword_score}%"></div>
+            </div>
+        </div>
+    `;
+
+        // Display extracted skills
+        const structured = analysis.structured_data;
+        const technicalSkills = structured.skills.technical || [];
+
+        if (technicalSkills.length > 0) {
+            skillsHtml += '<h6 class="mt-3">Technical Skills:</h6>';
+            technicalSkills.forEach(skill => {
+                skillsHtml += `<span class="badge bg-light text-dark me-1 mb-1">${skill}</span>`;
+            });
+        }
+
+        skillsAnalysis.innerHTML = skillsHtml;
+    }
+
+    function displayGrowthPlan() {
+        const growthPlan = careerData.growth_plan;
+
+        // Short term goals
+        const shortTerm = document.getElementById('shortTermGoals');
+        shortTerm.innerHTML = '';
+        growthPlan.short_term.forEach(goal => {
+            shortTerm.innerHTML += `<div class="timeline-item"><p>${goal}</p></div>`;
+        });
+
+        // Medium term goals
+        const mediumTerm = document.getElementById('mediumTermGoals');
+        mediumTerm.innerHTML = '';
+        growthPlan.medium_term.forEach(goal => {
+            mediumTerm.innerHTML += `<div class="timeline-item"><p>${goal}</p></div>`;
+        });
+
+        // Long term goals
+        const longTerm = document.getElementById('longTermGoals');
+        longTerm.innerHTML = '';
+        growthPlan.long_term.forEach(goal => {
+            longTerm.innerHTML += `<div class="timeline-item"><p>${goal}</p></div>`;
+        });
+    }
+
+    function displaySkillRoadmap() {
+        const skillRoadmap = document.getElementById('skillRoadmap');
+        const growthPlan = careerData.growth_plan;
+
+        let roadmapHtml = '';
+
+        Object.entries(growthPlan.skill_roadmap).forEach(([skill, details]) => {
+            roadmapHtml += `
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <h6 class="text-primary">${skill}</h6>
+                    <small class="text-muted">${details.current} → ${details.target}</small>
+                </div>
+                <div class="col-md-8">
+                    <div class="skill-progress">
+                        <div class="progress-bar" style="width: 30%"></div>
+                    </div>
+                    <small class="text-muted">Resources: ${details.resources.join(', ')}</small>
+                </div>
+            </div>
+        `;
+        });
+
+        skillRoadmap.innerHTML = roadmapHtml;
+    }
+
+    function displayRecommendations() {
+        const growthPlan = careerData.growth_plan;
+
+        // Certifications
+        const certifications = document.getElementById('certifications');
+        let certHtml = '';
+        growthPlan.certification_recommendations.forEach(cert => {
+            certHtml += `<div class="mb-2"><i class="fas fa-certificate text-primary me-2"></i>${cert}</div>`;
+        });
+        certifications.innerHTML = certHtml;
+
+        // Projects
+        const projects = document.getElementById('projectSuggestions');
+        let projectHtml = '';
+        growthPlan.project_suggestions.forEach(project => {
+            projectHtml += `<div class="mb-2"><i class="fas fa-project-diagram text-success me-2"></i>${project}</div>`;
+        });
+        projects.innerHTML = projectHtml;
+    }
+
+    let loadingModal = null;
+
+    function showLoading(text) {
+        document.getElementById('loadingText').textContent = text;
+        if (!loadingModal) {
+            loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'), {
+                backdrop: 'static',
+                keyboard: false
+            });
+        }
+        loadingModal.show();
+    }
+
+    function hideLoading() {
+        if (loadingModal) {
+            loadingModal.hide();
+            // Force remove backdrop if it persists
+            const backdrops = document.getElementsByClassName('modal-backdrop');
+            while (backdrops.length > 0) {
+                backdrops[0].parentNode.removeChild(backdrops[0]);
+            }
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+        }
+    }
+</script>
+{% endblock %}

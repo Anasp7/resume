@@ -1,0 +1,1011 @@
+{% extends "base.html" %}
+
+{% block title %}Resume Optimization - Resume Optimization Platform{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upload-area {
+        border: 2px dashed #dee2e6;
+        border-radius: 10px;
+        padding: 40px;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .upload-area:hover {
+        border-color: #667eea;
+        background-color: #f8f9fa;
+    }
+
+    .upload-area.dragover {
+        border-color: #667eea;
+        background-color: #e3f2fd;
+    }
+
+    .score-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 20px;
+        text-align: center;
+    }
+
+    .fault-item {
+        transition: all 0.3s ease;
+    }
+
+    .fault-item:hover {
+        transform: translateX(5px);
+    }
+
+    .optimization-preview {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    /* Fix for modal backdrop issues */
+    .modal-backdrop {
+        z-index: 1040 !important;
+    }
+
+    .modal {
+        z-index: 1050 !important;
+    }
+
+    /* CRITICAL: Ensure body scroll is ALWAYS restored */
+    body.modal-open {
+        overflow: hidden !important;
+        padding-right: 0 !important;
+    }
+
+    /* Force scroll restoration after modal */
+    body {
+        overflow: auto !important;
+    }
+
+    /* Remove any fixed positioning that might block scroll */
+    .modal-open .modal {
+        overflow: hidden !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-5 fw-bold">Resume Optimization</h1>
+            <p class="lead text-muted">Transform your resume into an ATS-friendly, professionally optimized document</p>
+        </div>
+    </div>
+
+    <!-- Upload Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card-body">
+                <h5 class="card-title mb-3">
+                    <i class="fas fa-upload me-2"></i>Upload Resume
+                </h5>
+
+                <!-- Role Selection -->
+                <div class="mb-3">
+                    <label for="targetRole" class="form-label">Target Role <span class="text-danger">*</span></label>
+                    <select class="form-select" id="targetRole" required>
+                        <option value="">Select your target role...</option>
+                        <option value="Software Engineer">Software Engineer</option>
+                        <option value="Data Scientist">Data Scientist</option>
+                        <option value="DevOps Engineer">DevOps Engineer</option>
+                        <option value="Machine Learning Engineer">Machine Learning Engineer</option>
+                        <option value="Full Stack Developer">Full Stack Developer</option>
+                        <option value="Backend Developer">Backend Developer</option>
+                        <option value="Frontend Developer">Frontend Developer</option>
+                        <option value="Data Analyst">Data Analyst</option>
+                        <option value="Cloud Engineer">Cloud Engineer</option>
+                        <option value="Product Manager">Product Manager</option>
+                        <option value="Technical Lead">Technical Lead</option>
+                        <option value="Solutions Architect">Solutions Architect</option>
+                    </select>
+                </div>
+
+                <!-- Upload Area -->
+                <div class="upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                    <h5>Drop your resume here or click to browse</h5>
+                    <p class="text-muted">Supported formats: PDF, DOCX, TXT (Max 16MB)</p>
+                    <input type="file" id="resumeFile" accept=".pdf,.docx,.txt" style="display: none;">
+                    <button class="btn btn-primary mt-3" onclick="document.getElementById('resumeFile').click()">
+                        <i class="fas fa-folder-open me-2"></i> Choose File
+                    </button>
+                </div>
+
+                <!-- Upload Status -->
+                <div id="uploadStatus" class="mt-3" style="display: none;">
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <span id="uploadMessage"></span>
+                    </div>
+                </div>
+
+                <!-- Analyze Button -->
+                <div class="mt-3">
+                    <button class="btn btn-success btn-lg w-100" id="analyzeBtn" disabled onclick="analyzeResume()">
+                        <i class="fas fa-search me-2"></i> Analyze Resume
+                    </button>
+                    <div id="globalStatus" class="text-center mt-2 fw-bold text-primary" style="display: none;"></div>
+                    <small class="text-muted d-block text-center mt-2">
+                        Upload a resume and select a role to enable analysis
+                    </small>
+                </div>
+            </div>
+            <div id="uploadProgress" class="mt-3" style="display: none;">
+                <div class="progress">
+                    <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Section -->
+    <div class="row mb-4" id="analysisSection" style="display: none;">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 bg-light">
+                <div class="card-body">
+                    <h5 class="card-title mb-4">
+                        <i class="fas fa-chart-line me-2 text-primary"></i>Step 2: Resume Analysis
+                    </h5>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <div class="score-card shadow-sm">
+                                <h3 class="mb-1" id="overallScore">0</h3>
+                                <small>Overall Score</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="score-card shadow-sm bg-info">
+                                <h3 class="mb-1" id="atsScore">0</h3>
+                                <small>ATS Score</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="score-card shadow-sm bg-success">
+                                <h3 class="mb-1" id="keywordScore">0</h3>
+                                <small>Keyword Score</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="score-card shadow-sm bg-warning">
+                                <h3 class="mb-1" id="formattingScore">0</h3>
+                                <small>Formatting Score</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Faults Analysis -->
+                    <div class="mt-4">
+                        <h6 class="fw-bold"><i class="fas fa-exclamation-triangle text-warning me-2"></i>Identified
+                            Issues:</h6>
+                        <div id="faultsList" class="ps-2">
+                            <!-- Faults will be populated here -->
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-top text-end">
+                        <button class="btn btn-primary btn-lg" onclick="showVerifySection()">
+                            <i class="fas fa-arrow-right me-2"></i> Next: Verify & Edit Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Verify & Edit Section -->
+    <div class="row mb-4" id="verifySection" style="display: none;">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h5 class="card-title mb-4">
+                        <i class="fas fa-user-edit me-2 text-primary"></i>Step 3: Verify & Refine Your Profile
+                    </h5>
+                    <p class="text-muted small mb-4">The AI extracted these details from your resume. Please correct any
+                        errors so your optimized resume accurately reflects your accomplishments!</p>
+
+                    <div class="row g-4">
+                        <!-- Experience Section -->
+                        <div class="col-12">
+                            <h6 class="fw-bold mb-3 border-bottom pb-2">Professional Experience</h6>
+                            <div id="experienceEditor">
+                                <!-- Dynamic experience fields -->
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary mt-2" onclick="addExperience()">
+                                <i class="fas fa-plus me-1"></i> Add Experience
+                            </button>
+                        </div>
+
+                        <!-- Technical Skills -->
+                        <div class="col-md-6">
+                            <h6 class="fw-bold mb-3 border-bottom pb-2">Technical Skills</h6>
+                            <textarea class="form-control" id="editSkillsText" rows="4"
+                                placeholder="e.g. Python, SQL, AWS, React, ROS2..."></textarea>
+                        </div>
+
+                        <!-- Projects Section -->
+                        <div class="col-md-6">
+                            <h6 class="fw-bold mb-3 border-bottom pb-2">Key Projects</h6>
+                            <textarea class="form-control" id="editProjectsText" rows="4"
+                                placeholder="Describe your key projects (one per line)..."></textarea>
+                        </div>
+
+                        <!-- Smart Interview Questions -->
+                        <div class="col-12" id="clarificationSection" style="display: none;">
+                            <div class="alert alert-info border-0 shadow-sm">
+                                <h6 class="fw-bold mb-3"><i class="fas fa-brain me-2"></i>Smart Interview: Boost Your
+                                    Score</h6>
+                                <p class="small mb-3">Answer these quick questions to help the AI highlight your impact!
+                                </p>
+                                <div id="questionsContainer" class="row g-3">
+                                    <!-- Questions will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 pt-3 border-top d-flex justify-content-between">
+                        <button class="btn btn-outline-secondary"
+                            onclick="document.getElementById('verifySection').style.display='none'; document.getElementById('analysisSection').scrollIntoView();">
+                            <i class="fas fa-chevron-left me-2"></i> Back to Analysis
+                        </button>
+                        <div class="btn-group">
+                            <button class="btn btn-primary btn-lg" onclick="loadTemplates()">
+                                <i class="fas fa-palette me-2"></i> Choose Template & Optimize
+                            </button>
+                            <button class="btn btn-success btn-lg ms-2" onclick="optimizeResume()">
+                                <i class="fas fa-magic me-2"></i> Quick Optimize
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template Selection Modal -->
+    <div class="modal fade" id="templateModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Choose Resume Template</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row" id="templateGrid">
+                        <!-- Templates will be loaded here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="optimizeWithSelectedTemplate()">
+                        <i class="fas fa-check me-2"></i>Use Template
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Optimization Section -->
+    <div class="row mb-4" id="optimizationSection" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">Step 4: Optimization Results</h5>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Recommended Roles:</h6>
+                            <div id="recommendedRoles">
+                                <!-- Roles will be populated here -->
+                            </div>
+
+                            <div class="mt-3">
+                                <h6>Improvement Score:</h6>
+                                <div class="progress">
+                                    <div class="progress-bar bg-success" id="improvementProgress" style="width: 0%">
+                                    </div>
+                                </div>
+                                <small class="text-muted" id="improvementText">+0 points improvement</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Optimized Resume Preview:</h6>
+                            <div class="optimization-preview" id="optimizedPreview">
+                                <!-- Preview will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <h6 class="fw-bold"><i class="fas fa-download me-2"></i>Export Your Optimized Resume:</h6>
+                        <div class="btn-group mt-2" role="group" aria-label="Export formats">
+                            <button class="btn btn-outline-primary" onclick="exportResume('text')">
+                                <i class="fas fa-file-alt me-2"></i> Text
+                            </button>
+                            <button class="btn btn-outline-primary" onclick="exportResume('markdown')">
+                                <i class="fas fa-markdown me-2"></i> Markdown
+                            </button>
+                            <button class="btn btn-outline-primary" onclick="exportResume('html')">
+                                <i class="fas fa-code me-2"></i> HTML
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="exportResume('pdf')">
+                                <i class="fas fa-file-pdf me-2"></i> PDF
+                            </button>
+                        </div>
+                        <p class="small text-muted mt-2">Choose your preferred format to save your optimized resume.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- (Loading modal removed to prevent stickiness issues) -->
+    {% endblock %}
+
+    {% block extra_js %}
+    <script>
+        let resumeFilename = '';
+        let analysisData;
+        let structuredData;
+        // cleanSections is the authoritative, parser-validated data for Step 3.
+        // It is populated by parse_resume_sections() on the backend and NEVER
+        // contains contact details, summary text, or education entries inside
+        // the experience array.
+        let cleanSections = null;
+        let optimizationData;
+        let availableTemplates = [];
+        let selectedTemplate = null;
+        let clarificationQuestions = [];
+
+        // Upload functionality
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('resumeFile');
+        const targetRoleSelect = document.getElementById('targetRole');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+
+        function unlockUI() {
+            // Remove Bootstrap's modal-open class and styles that lock scroll
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = 'auto';
+            document.body.style.paddingRight = '0';
+            document.body.removeAttribute('style');
+
+            // Remove any lingering backdrops
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => {
+                backdrop.classList.remove('show');
+                setTimeout(() => backdrop.remove(), 100);
+            });
+        }
+
+        // Enable/disable analyze button based on requirements
+        function updateAnalyzeButton() {
+            const hasFile = resumeFilename !== '';
+            const hasRole = targetRoleSelect.value !== '';
+            analyzeBtn.disabled = !(hasFile && hasRole);
+
+            if (hasFile && hasRole) {
+                analyzeBtn.innerHTML = '<i class="fas fa-search me-2"></i> Analyze Resume';
+            } else if (hasFile && !hasRole) {
+                analyzeBtn.innerHTML = '<i class="fas fa-search me-2"></i> Select Role to Analyze';
+            } else if (!hasFile && hasRole) {
+                analyzeBtn.innerHTML = '<i class="fas fa-search me-2"></i> Upload Resume to Analyze';
+            } else {
+                analyzeBtn.innerHTML = '<i class="fas fa-search me-2"></i> Upload Resume & Select Role';
+            }
+        }
+
+        // Role selection change handler
+        targetRoleSelect.addEventListener('change', updateAnalyzeButton);
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length === 0) return;
+
+            const file = files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            showLoading('Uploading resume...');
+
+            fetch('/api/upload-resume', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    hideLoading();
+
+                    // Small delay to ensure modal is fully hidden
+                    setTimeout(() => {
+                        if (data.success) {
+                            // Store filename for later analysis
+                            resumeFilename = data.filename;
+
+                            // Show upload success
+                            const uploadStatus = document.getElementById('uploadStatus');
+                            const uploadMessage = document.getElementById('uploadMessage');
+                            uploadStatus.style.display = 'block';
+                            uploadMessage.textContent = `${data.message} File: ${data.filename} (${(data.file_size / 1024).toFixed(1)} KB)`;
+
+                            // Update analyze button
+                            updateAnalyzeButton();
+
+                            // Hide analysis section if it was showing
+                            document.getElementById('analysisSection').style.display = 'none';
+                            document.getElementById('optimizationSection').style.display = 'none';
+
+                            console.log('Upload successful:', data);
+                        } else {
+                            alert('Error: ' + data.error);
+                        }
+                    }, 100);
+                })
+                .catch(error => {
+                    hideLoading();
+                    alert('Upload error: ' + error);
+                });
+        }
+
+        function analyzeResume() {
+            const targetRole = targetRoleSelect.value;
+
+            if (!resumeFilename) {
+                alert('Please upload a resume first');
+                return;
+            }
+
+            if (!targetRole) {
+                alert('Please select a target role');
+                return;
+            }
+
+            showLoading('Analyzing resume...');
+
+            fetch('/api/analyze-resume', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    filename: resumeFilename,
+                    target_role: targetRole
+                })
+            })
+                .then(response => {
+                    console.log('Analysis response status:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Analysis response data:', data);
+                    hideLoading();
+
+                    // Small delay to ensure modal is fully hidden
+                    setTimeout(() => {
+                        if (data.success) {
+                            analysisData = data.analysis;
+                            structuredData = data.structured_data;
+                            // Store the structured-parser output as the Step 3 source of truth
+                            cleanSections = data.clean_sections || null;
+                            clarificationQuestions = data.clarification_questions || [];
+                            displayAnalysis();
+                        } else {
+                            console.error('Analysis error:', data.error);
+                            alert('Analysis error: ' + data.error);
+                        }
+                    }, 100);
+                })
+                .catch(error => {
+                    console.error('Analysis fetch error:', error);
+                    hideLoading();
+                    alert('Analysis error: ' + error);
+                });
+        }
+
+        function displayAnalysis() {
+            // Check if analysisData exists
+            if (!analysisData) {
+                console.error('No analysis data available');
+                alert('No analysis data available. Please try uploading your resume again.');
+                return;
+            }
+
+            // Show analysis section
+            document.getElementById('analysisSection').style.display = 'block';
+
+            // Update scores
+            const scores = analysisData.scores || analysisData || {};
+            document.getElementById('overallScore').textContent = Math.round(scores.overall_score || 0);
+            document.getElementById('atsScore').textContent = Math.round(scores.ats_score || 0);
+            document.getElementById('keywordScore').textContent = Math.round(scores.keyword_score || 0);
+            document.getElementById('formattingScore').textContent = Math.round(scores.formatting_score || 0);
+
+            // Display faults
+            const faultsList = document.getElementById('faultsList');
+            faultsList.innerHTML = '';
+
+            const faults = analysisData.faults || [];
+            if (faults.length === 0) {
+                faultsList.innerHTML = '<p class="text-success"><i class="fas fa-check-circle me-2"></i>No issues found!</p>';
+            } else {
+                faults.forEach(fault => {
+                    const severityIcon = fault.severity === 'critical' ? '🔴' :
+                        fault.severity === 'high' ? '🟡' : '🟠';
+                    const faultItem = `
+                <div class="fault-item mb-2 p-2 bg-light rounded">
+                    ${severityIcon} ${fault.description}
+                    ${fault.suggestion ? `<br><small class="text-muted">💡 ${fault.suggestion}</small>` : ''}
+                </div>
+            `;
+                    faultsList.innerHTML += faultItem;
+                });
+            }
+
+            // Force unlock UI and scroll to results
+            unlockUI();
+
+            setTimeout(() => {
+                const analysisSection = document.getElementById('analysisSection');
+                if (analysisSection) {
+                    analysisSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 200);
+        }
+
+        /**
+         * showVerifySection — Step 3 form population
+         *
+         * DATA SOURCES (separation of concerns):
+         *   • Professional Experience  ← cleanSections.experience ONLY
+         *     (validated by parse_resume_sections; never contains contact /
+         *      summary / education text)
+         *   • Technical Skills         ← cleanSections.skills
+         *   • Key Projects             ← cleanSections.projects
+         *   • Contact / Summary        → NOT placed in any form field here
+         */
+        function showVerifySection() {
+            if (!analysisData) return;
+
+            document.getElementById('verifySection').style.display = 'block';
+
+            const expEditor = document.getElementById('experienceEditor');
+            expEditor.innerHTML = '';
+
+            // ----------------------------------------------------------------
+            // EXPERIENCE — use clean_sections exclusively.
+            // Flatten ALL achievement bullets from every experience entry
+            // into a single textarea block. Only accomplishments are shown;
+            // title / company fields are intentionally absent.
+            // ----------------------------------------------------------------
+            const experience = (cleanSections && Array.isArray(cleanSections.experience))
+                ? cleanSections.experience
+                : [];
+
+            if (experience.length > 0) {
+                // Gather every achievement bullet across all entries.
+                const allBullets = [];
+                experience.forEach(exp => {
+                    if (Array.isArray(exp.achievements) && exp.achievements.length > 0) {
+                        exp.achievements.forEach(b => { if (b) allBullets.push(b); });
+                    }
+                });
+                // Render one block pre-filled with the extracted bullets.
+                addExperience('', '', allBullets);
+            } else {
+                // No professional experience detected — render one empty block.
+                addExperience();
+            }
+
+            // ----------------------------------------------------------------
+            // SKILLS — use clean_sections exclusively
+            // ----------------------------------------------------------------
+            const skills = (cleanSections && Array.isArray(cleanSections.skills))
+                ? cleanSections.skills
+                : (Array.isArray(structuredData && structuredData.skills)
+                    ? structuredData.skills
+                    : []);
+            document.getElementById('editSkillsText').value = skills.join(', ');
+
+            // ----------------------------------------------------------------
+            // PROJECTS — use clean_sections exclusively
+            // ----------------------------------------------------------------
+            const projects = (cleanSections && Array.isArray(cleanSections.projects))
+                ? cleanSections.projects
+                : [];
+            document.getElementById('editProjectsText').value = projects.join('\n');
+
+            // ----------------------------------------------------------------
+            // Smart Interview Questions (unchanged)
+            // ----------------------------------------------------------------
+            const questionsContainer = document.getElementById('questionsContainer');
+            const clarificationSection = document.getElementById('clarificationSection');
+
+            if (clarificationQuestions && clarificationQuestions.length > 0) {
+                clarificationSection.style.display = 'block';
+                questionsContainer.innerHTML = '';
+
+                clarificationQuestions.forEach(q => {
+                    const qItem = `
+                        <div class="col-md-6">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body p-3">
+                                    <label class="form-label small fw-bold text-primary">${q.question}</label>
+                                    <textarea class="form-control form-control-sm clarification-answer"
+                                              data-id="${q.id}"
+                                              data-question="${q.question}"
+                                              rows="2" placeholder="Tell us more..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    questionsContainer.innerHTML += qItem;
+                });
+            } else {
+                clarificationSection.style.display = 'none';
+            }
+
+            // Scroll to section
+            setTimeout(() => {
+                document.getElementById('verifySection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+
+        /**
+         * addExperience — renders ONLY the Accomplishments textarea.
+         * Job Title and Company are intentionally omitted; the user
+         * edits the raw achievement bullets extracted from their resume.
+         *
+         * @param {string[]} bullets  Pre-populated achievement lines.
+         */
+        function addExperience(title = '', company = '', bullets = []) {
+            const expEditor = document.getElementById('experienceEditor');
+            const expId = `exp_${Date.now()}`;
+            const bulletString = bullets.join('\n');
+
+            const html = `
+                <div class="experience-group mb-3 p-3 border rounded bg-light" id="${expId}">
+                    <div class="row g-2">
+                        <div class="col-12 text-start">
+                            <label class="form-label small fw-semibold">Accomplishments <span class="text-muted fw-normal">(one per line)</span></label>
+                            <textarea class="form-control form-control-sm exp-bullets" rows="6"
+                                placeholder="Describe what you did and the results...">${bulletString}</textarea>
+                        </div>
+                        <div class="col-12 text-end">
+                            <button class="btn btn-sm btn-link text-danger"
+                                    onclick="document.getElementById('${expId}').remove()">
+                                <i class="fas fa-trash me-1"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            const div = document.createElement('div');
+            div.innerHTML = html;
+            expEditor.appendChild(div.firstElementChild);
+        }
+
+        function getRefinedData() {
+            // Collect experience data — only accomplishment bullets (no title/company).
+            const experience = [];
+            document.querySelectorAll('.experience-group').forEach(group => {
+                const bulletsRaw = group.querySelector('.exp-bullets').value;
+                const bullets = bulletsRaw.split('\n').map(b => b.trim()).filter(b => b !== '');
+                if (bullets.length > 0) {
+                    // title and company left blank; the LLM uses bullets as context.
+                    experience.push({ title: '', company: '', bullets });
+                }
+            });
+
+            // Collect skills and projects
+            const skills = document.getElementById('editSkillsText').value.split(',').map(s => s.trim()).filter(s => s !== '');
+            const projects = document.getElementById('editProjectsText').value.split('\n').map(p => p.trim()).filter(p => p !== '');
+
+            // Collect clarification answers
+            const clarifications = [];
+            document.querySelectorAll('.clarification-answer').forEach(el => {
+                const answer = el.value.trim();
+                if (answer) {
+                    clarifications.push({
+                        id: el.getAttribute('data-id'),
+                        question: el.getAttribute('data-question'),
+                        answer: answer
+                    });
+                }
+            });
+
+            return {
+                experience,
+                skills,
+                projects,
+                clarifications,
+                original_text: (structuredData && structuredData.original_text) || ''
+            };
+        }
+
+        function optimizeResume() {
+            const targetRole = targetRoleSelect.value;
+            const refinedData = getRefinedData();
+
+            showLoading('Optimizing resume with your information...');
+
+            fetch('/api/optimize-resume', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    filename: resumeFilename,
+                    target_role: targetRole,
+                    user_data: refinedData
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    hideLoading();
+                    if (data.success) {
+                        // Support both nested and direct optimization data
+                        optimizationData = data.optimization || data;
+                        displayOptimization();
+                    } else {
+                        alert('Optimization error: ' + (data.error || 'Unknown error during optimization'));
+                    }
+                })
+                .catch(error => {
+                    hideLoading();
+                    alert('Optimization error: ' + error);
+                });
+        }
+
+        function displayOptimization() {
+            // Show optimization section
+            document.getElementById('optimizationSection').style.display = 'block';
+
+            // Get the optimized resume data
+            let optimizedResume;
+            if (optimizationData.optimized_resumes && optimizationData.optimized_resumes.fast_optimized) {
+                optimizedResume = optimizationData.optimized_resumes.fast_optimized;
+            } else if (optimizationData.optimized_resume) {
+                optimizedResume = optimizationData.optimized_resume;
+            } else {
+                optimizedResume = optimizationData;
+            }
+
+            // Display target role and template badge
+            const rolesDiv = document.getElementById('recommendedRoles');
+            let badges = `<span class="badge bg-primary me-2 mb-2">${optimizedResume.target_role || 'Optimized Role'}</span>`;
+            if (optimizedResume.template_used) {
+                badges += `<span class="badge bg-info me-2 mb-2">Template: ${optimizedResume.template_used}</span>`;
+            }
+            rolesDiv.innerHTML = badges;
+
+            // Display improvement
+            const improvement = (optimizedResume.optimization_score || 85) - 60;
+            document.getElementById('improvementProgress').style.width = `${Math.min(100, Math.max(0, improvement * 2))}%`;
+            document.getElementById('improvementText').textContent = `${improvement > 0 ? '+' : ''}${improvement.toFixed(1)} points improvement`;
+
+            // Display preview (handle both string and JSON data)
+            const preview = document.getElementById('optimizedPreview');
+            let content = optimizedResume.optimized_content;
+
+            if (typeof content === 'object') {
+                // If it's our new structured format with HTML, render the HTML
+                if (content.html) {
+                    preview.style.whiteSpace = 'normal';
+                    preview.style.padding = '0';
+                    preview.style.background = '#f8f9fa';
+                    preview.innerHTML = `<div class="resume-preview-container" style="transform: scale(0.9); transform-origin: top center; margin-bottom: -50px;">${content.html}</div>`;
+                } else {
+                    // Fallback: Pretty print JSON
+                    preview.textContent = JSON.stringify(content, null, 2);
+                }
+            } else {
+                // Fallback: Plain text
+                preview.textContent = content;
+            }
+
+            // Scroll to optimization section
+            setTimeout(() => {
+                document.getElementById('optimizationSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+
+        function exportResume(format) {
+            let optimizedResume;
+            if (optimizationData.optimized_resumes && optimizationData.optimized_resumes.fast_optimized) {
+                optimizedResume = optimizationData.optimized_resumes.fast_optimized;
+            } else if (optimizationData.optimized_resume) {
+                optimizedResume = optimizationData.optimized_resume;
+            } else {
+                optimizedResume = optimizationData;
+            }
+
+            if (!optimizedResume) {
+                alert('No optimized resume data available for export');
+                return;
+            }
+
+            showLoading(`Generating ${format.toUpperCase()}...`);
+
+            fetch('/api/export-resume', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    optimized_resume: optimizedResume,
+                    format: format
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    hideLoading();
+                    if (data.success && (data.filename || data.file_path)) {
+                        const fileToDownload = data.filename || data.file_path.split('/').pop();
+                        window.open(`/api/download/${fileToDownload}`, '_blank');
+                    } else {
+                        const errorMsg = data.error || 'Failed to generate export file.';
+                        alert('Export error: ' + errorMsg);
+                    }
+                })
+                .catch(error => {
+                    hideLoading();
+                    alert('Export error: ' + error);
+                });
+        }
+
+        function showLoading(text) {
+            const status = document.getElementById('globalStatus');
+            if (status) {
+                status.textContent = `⏳ ${text}`;
+                status.style.display = 'block';
+            }
+            console.log('Loading:', text);
+        }
+
+        function hideLoading() {
+            const status = document.getElementById('globalStatus');
+            if (status) {
+                status.style.display = 'none';
+            }
+            console.log('Loading completed');
+        }
+
+        function loadTemplates() {
+            showLoading('Loading professional templates...');
+
+            fetch('/api/templates')
+                .then(response => response.json())
+                .then(data => {
+                    hideLoading();
+                    if (data.success) {
+                        availableTemplates = data.templates;
+                        displayTemplates();
+
+                        // Show modal
+                        const modal = new bootstrap.Modal(document.getElementById('templateModal'));
+                        modal.show();
+                    } else {
+                        alert('Error loading templates: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    hideLoading();
+                    alert('Error loading templates: ' + error);
+                });
+        }
+
+        function displayTemplates() {
+            const templateGrid = document.getElementById('templateGrid');
+            templateGrid.innerHTML = '';
+
+            availableTemplates.forEach(template => {
+                const templateCard = `
+            <div class="col-md-4 mb-3">
+                <div class="card template-card h-100" id="template-${template.id}" onclick="selectTemplate('${template.id}')" style="cursor: pointer;">
+                    <div class="card-body text-center">
+                        <i class="fas fa-file-alt fa-3x text-primary mb-2"></i>
+                        <h6 class="card-title">${template.name}</h6>
+                        <small class="text-muted">${template.style}</small>
+                    </div>
+                </div>
+            </div>
+        `;
+                templateGrid.innerHTML += templateCard;
+            });
+        }
+
+        function selectTemplate(templateId) {
+            selectedTemplate = availableTemplates.find(t => t.id === templateId);
+
+            // Update UI to show selection
+            document.querySelectorAll('.template-card').forEach(card => {
+                card.classList.remove('border-primary', 'shadow');
+            });
+            const selectedCard = document.getElementById(`template-${templateId}`);
+            if (selectedCard) {
+                selectedCard.classList.add('border-primary', 'shadow');
+            }
+        }
+
+        function optimizeWithSelectedTemplate() {
+            if (!selectedTemplate) {
+                alert('Please select a template first');
+                return;
+            }
+
+            // Close modal using Bootstrap API
+            const modalElement = document.getElementById('templateModal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+                modal.hide();
+            }
+
+            // Optimize with selected template
+            optimizeResumeWithTemplate(selectedTemplate.id);
+        }
+
+        function optimizeResumeWithTemplate(templateId) {
+            const targetRole = targetRoleSelect.value;
+            const refinedData = getRefinedData();
+
+            showLoading(`Applying ${selectedTemplate.name} template with your profile...`);
+
+            fetch('/api/optimize-resume-with-template', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    filename: resumeFilename,
+                    target_role: targetRole,
+                    template_id: templateId,
+                    user_data: refinedData
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    hideLoading();
+                    if (data.success) {
+                        optimizationData = data.optimized_resume;
+                        displayOptimization();
+                    } else {
+                        alert('Optimization error: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    hideLoading();
+                    alert('Optimization error: ' + error);
+                });
+        }
+    </script>
+    {% endblock %}

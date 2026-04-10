@@ -1,0 +1,612 @@
+{% extends "base.html" %}
+
+{% block title %}Resume Optimization - Resume Optimization Platform{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upload-area {
+        border: 2px dashed #dee2e6;
+        border-radius: 10px;
+        padding: 40px;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .upload-area:hover {
+        border-color: #667eea;
+        background-color: #f8f9fa;
+    }
+    .upload-area.dragover {
+        border-color: #667eea;
+        background-color: #e3f2fd;
+    }
+    .score-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 20px;
+        text-align: center;
+    }
+    .fault-item {
+        transition: all 0.3s ease;
+    }
+    .fault-item:hover {
+        transform: translateX(5px);
+    }
+    .optimization-preview {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-5 fw-bold">Resume Optimization</h1>
+            <p class="lead text-muted">Transform your resume into an ATS-friendly, professionally optimized document</p>
+        </div>
+    </div>
+
+    <!-- Upload Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">
+                        <i class="fas fa-upload me-2"></i>Upload Resume
+                    </h5>
+                    
+                    <!-- Role Selection -->
+                    <div class="mb-3">
+                        <label for="targetRole" class="form-label">Target Role <span class="text-danger">*</span></label>
+                        <select class="form-select" id="targetRole" required>
+                            <option value="">Select your target role...</option>
+                            <option value="Software Engineer">Software Engineer</option>
+                            <option value="Data Scientist">Data Scientist</option>
+                            <option value="DevOps Engineer">DevOps Engineer</option>
+                            <option value="Machine Learning Engineer">Machine Learning Engineer</option>
+                            <option value="Full Stack Developer">Full Stack Developer</option>
+                            <option value="Backend Developer">Backend Developer</option>
+                            <option value="Frontend Developer">Frontend Developer</option>
+                            <option value="Data Analyst">Data Analyst</option>
+                            <option value="Cloud Engineer">Cloud Engineer</option>
+                            <option value="Product Manager">Product Manager</option>
+                            <option value="Technical Lead">Technical Lead</option>
+                            <option value="Solutions Architect">Solutions Architect</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Upload Area -->
+                    <div class="upload-area" id="uploadArea">
+                        <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                        <h5>Drop your resume here or click to browse</h5>
+                        <p class="text-muted">Supported formats: PDF, DOCX, TXT (Max 16MB)</p>
+                        <input type="file" id="resumeFile" accept=".pdf,.docx,.txt" style="display: none;">
+                        <button class="btn btn-primary mt-3" onclick="document.getElementById('resumeFile').click()">
+                            <i class="fas fa-folder-open me-2"></i> Choose File
+                        </button>
+                    </div>
+                    
+                    <!-- Upload Status -->
+                    <div id="uploadStatus" class="mt-3" style="display: none;">
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <span id="uploadMessage"></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Analyze Button -->
+                    <div class="mt-3">
+                        <button class="btn btn-success btn-lg w-100" id="analyzeBtn" disabled onclick="analyzeResume()">
+                            <i class="fas fa-search me-2"></i> Analyze Resume
+                        </button>
+                        <small class="text-muted d-block text-center mt-2">
+                            Upload a resume and select a role to enable analysis
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Section -->
+    <div class="row mb-4" id="analysisSection" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">Step 2: Resume Analysis</h5>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="score-card">
+                                <h3 class="mb-1" id="overallScore">0</h3>
+                                <small>Overall Score</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="score-card">
+                                <h3 class="mb-1" id="atsScore">0</h3>
+                                <small>ATS Score</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="score-card">
+                                <h3 class="mb-1" id="keywordScore">0</h3>
+                                <small>Keyword Score</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="score-card">
+                                <h3 class="mb-1" id="formattingScore">0</h3>
+                                <small>Formatting Score</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Faults Analysis -->
+                    <div class="mt-4">
+                        <h6>Identified Issues:</h6>
+                        <div id="faultsList">
+                            <!-- Faults will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button class="btn btn-primary" onclick="loadTemplates()">
+                            <i class="fas fa-palette me-2"></i> Choose Template & Optimize
+                        </button>
+                        <button class="btn btn-success ms-2" onclick="optimizeResume()">
+                            <i class="fas fa-magic me-2"></i> Quick Optimize
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template Selection Modal -->
+    <div class="modal fade" id="templateModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Choose Resume Template</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row" id="templateGrid">
+                        <!-- Templates will be loaded here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="optimizeWithSelectedTemplate()">
+                        <i class="fas fa-check me-2"></i>Use Template
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Optimization Section -->
+    <div class="row mb-4" id="optimizationSection" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">Step 3: Optimization Results</h5>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Recommended Roles:</h6>
+                            <div id="recommendedRoles">
+                                <!-- Roles will be populated here -->
+                            </div>
+                            
+                            <div class="mt-3">
+                                <h6>Improvement Score:</h6>
+                                <div class="progress">
+                                    <div class="progress-bar bg-success" id="improvementProgress" style="width: 0%"></div>
+                                </div>
+                                <small class="text-muted" id="improvementText">+0 points improvement</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Optimized Resume Preview:</h6>
+                            <div class="optimization-preview" id="optimizedPreview">
+                                <!-- Preview will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <h6>Export Options:</h6>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-outline-primary" onclick="exportResume('text')">
+                                <i class="fas fa-file-alt me-2"></i> Text
+                            </button>
+                            <button class="btn btn-outline-primary" onclick="exportResume('markdown')">
+                                <i class="fas fa-markdown me-2"></i> Markdown
+                            </button>
+                            <button class="btn btn-outline-primary" onclick="exportResume('html')">
+                                <i class="fas fa-code me-2"></i> HTML
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h5 id="loadingText">Processing...</h5>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let resumeFilename = '';
+let analysisData = null;
+let optimizationData = null;
+let availableTemplates = [];
+let selectedTemplate = null;
+
+// Upload functionality
+const uploadArea = document.getElementById('uploadArea');
+const fileInput = document.getElementById('resumeFile');
+const targetRoleSelect = document.getElementById('targetRole');
+const analyzeBtn = document.getElementById('analyzeBtn');
+
+// Enable/disable analyze button based on requirements
+function updateAnalyzeButton() {
+    const hasFile = resumeFilename !== '';
+    const hasRole = targetRoleSelect.value !== '';
+    analyzeBtn.disabled = !(hasFile && hasRole);
+    
+    if (hasFile && hasRole) {
+        analyzeBtn.innerHTML = '<i class="fas fa-search me-2"></i> Analyze Resume';
+    } else if (hasFile && !hasRole) {
+        analyzeBtn.innerHTML = '<i class="fas fa-search me-2"></i> Select Role to Analyze';
+    } else if (!hasFile && hasRole) {
+        analyzeBtn.innerHTML = '<i class="fas fa-search me-2"></i> Upload Resume to Analyze';
+    } else {
+        analyzeBtn.innerHTML = '<i class="fas fa-search me-2"></i> Upload Resume & Select Role';
+    }
+}
+
+// Role selection change handler
+targetRoleSelect.addEventListener('change', updateAnalyzeButton);
+
+uploadArea.addEventListener('click', () => fileInput.click());
+uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
+});
+uploadArea.addEventListener('dragleave', () => {
+    uploadArea.classList.remove('dragover');
+});
+uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    handleFiles(e.dataTransfer.files);
+});
+
+fileInput.addEventListener('change', (e) => {
+    handleFiles(e.target.files);
+});
+
+function handleFiles(files) {
+    if (files.length === 0) return;
+    
+    const file = files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    showLoading('Uploading resume...');
+    
+    fetch('/api/upload-resume', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.success) {
+            // Store filename for later analysis
+            resumeFilename = data.filename;
+            
+            // Show upload success
+            const uploadStatus = document.getElementById('uploadStatus');
+            const uploadMessage = document.getElementById('uploadMessage');
+            uploadStatus.style.display = 'block';
+            uploadMessage.textContent = `${data.message} File: ${data.filename} (${(data.file_size / 1024).toFixed(1)} KB)`;
+            
+            // Update analyze button
+            updateAnalyzeButton();
+            
+            // Hide analysis section if it was showing
+            document.getElementById('analysisSection').style.display = 'none';
+            document.getElementById('optimizationSection').style.display = 'none';
+            
+            console.log('Upload successful:', data);
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        alert('Upload error: ' + error);
+    });
+}
+
+function analyzeResume() {
+    const targetRole = targetRoleSelect.value;
+    
+    if (!resumeFilename) {
+        alert('Please upload a resume first');
+        return;
+    }
+    
+    if (!targetRole) {
+        alert('Please select a target role');
+        return;
+    }
+    
+    showLoading('Analyzing resume...');
+    
+    fetch('/api/analyze-resume', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+            filename: resumeFilename,
+            target_role: targetRole
+        })
+    })
+    .then(response => {
+        console.log('Analysis response status:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Analysis response data:', data);
+        hideLoading();
+        if (data.success) {
+            analysisData = data.analysis;
+            console.log('Setting analysisData:', analysisData);
+            displayAnalysis();
+        } else {
+            console.error('Analysis error:', data.error);
+            alert('Analysis error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Analysis fetch error:', error);
+        hideLoading();
+        alert('Analysis error: ' + error);
+    });
+}
+
+function displayAnalysis() {
+    if (!analysisData) {
+        console.error('No analysis data available');
+        alert('No analysis data available. Please try uploading your resume again.');
+        return;
+    }
+    
+    const analysis = analysisData;
+    console.log('Analysis data:', analysis);
+    
+    // Show analysis section
+    document.getElementById('analysisSection').style.display = 'block';
+    
+    // Update scores
+    const scores = analysis.scores || {};
+    document.getElementById('overallScore').textContent = Math.round(scores.overall_score || 0);
+    document.getElementById('atsScore').textContent = Math.round(scores.ats_score || 0);
+    document.getElementById('keywordScore').textContent = Math.round(scores.keyword_score || 0);
+    document.getElementById('formattingScore').textContent = Math.round(scores.formatting_score || 0);
+    
+    // Display faults
+    const faultsList = document.getElementById('faultsList');
+    faultsList.innerHTML = '';
+    
+    const faults = analysis.faults || [];
+    if (faults.length === 0) {
+        faultsList.innerHTML = '<p class="text-success"><i class="fas fa-check-circle me-2"></i>No issues found!</p>';
+    } else {
+        faults.forEach(fault => {
+            const severityIcon = fault.severity === 'critical' ? '🔴' : 
+                               fault.severity === 'high' ? '🟡' : '🟠';
+            const faultItem = `
+                <div class="fault-item mb-2 p-2 bg-light rounded">
+                    ${severityIcon} ${fault.description}
+                    ${fault.suggestion ? `<br><small class="text-muted">💡 ${fault.suggestion}</small>` : ''}
+                </div>
+            `;
+            faultsList.innerHTML += faultItem;
+        });
+    }
+}
+
+function optimizeResume() {
+    const targetRole = targetRoleSelect.value;
+    
+    showLoading('Optimizing resume...');
+    
+    fetch('/api/optimize-resume', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+            filename: resumeFilename,
+            target_role: targetRole
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.success) {
+            optimizationData = data.optimization;
+            displayOptimization();
+        } else {
+            alert('Optimization error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        alert('Optimization error: ' + error);
+    });
+}
+
+function displayOptimization() {
+    // Show optimization section
+    document.getElementById('optimizationSection').style.display = 'block';
+    
+    // Get the optimized resume from fast API response
+    const optimizedResume = optimizationData.optimized_resumes.fast_optimized;
+    
+    // Display target role
+    const rolesDiv = document.getElementById('recommendedRoles');
+    rolesDiv.innerHTML = `<span class="badge bg-primary me-2 mb-2">${optimizedResume.target_role}</span>`;
+    
+    // Display improvement
+    const improvement = optimizedResume.optimization_score - 60; // Assuming original score of 60
+    document.getElementById('improvementProgress').style.width = `${Math.abs(improvement)}%`;
+    document.getElementById('improvementText').textContent = `${improvement > 0 ? '+' : ''}${improvement.toFixed(1)} points improvement`;
+    
+    // Display preview
+    const preview = document.getElementById('optimizedPreview');
+    const content = optimizedResume.optimized_content.split('\n').slice(0, 15).join('\n');
+    preview.textContent = content + '\n...';
+}
+
+function exportResume(format) {
+    const optimizedResume = optimizationData.optimized_resumes.fast_optimized;
+    
+    showLoading('Exporting resume...');
+    
+    fetch('/api/export-resume', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+            optimized_content: optimizedResume.optimized_content,
+            format: format
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.success) {
+            // Download the file
+            window.open(`/api/download/${data.filename}`, '_blank');
+        } else {
+            alert('Export error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        alert('Export error: ' + error);
+    });
+}
+
+function loadTemplates() {
+    showLoading('Loading templates...');
+    
+    fetch('/api/templates')
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.success) {
+            availableTemplates = data.templates;
+            displayTemplates();
+        } else {
+            alert('Error loading templates: ' + data.error);
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        alert('Error loading templates: ' + error);
+    });
+}
+
+function displayTemplates() {
+    const templateGrid = document.getElementById('templateGrid');
+    templateGrid.innerHTML = '';
+    
+    availableTemplates.forEach(template => {
+        const templateCard = `
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h6>${template.name}</h6>
+                        <p class="small text-muted">${template.description}</p>
+                        <button class="btn btn-sm btn-outline-primary" onclick="selectTemplate('${template.id}')">
+                            Select
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        templateGrid.innerHTML += templateCard;
+    });
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('templateModal'));
+    modal.show();
+}
+
+function selectTemplate(templateId) {
+    selectedTemplate = availableTemplates.find(t => t.id === templateId);
+    
+    // Update UI to show selected template
+    document.querySelectorAll('#templateGrid .card').forEach(card => {
+        card.classList.remove('border-primary');
+    });
+    event.target.closest('.card').classList.add('border-primary');
+}
+
+function optimizeWithSelectedTemplate() {
+    if (!selectedTemplate) {
+        alert('Please select a template');
+        return;
+    }
+    
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('templateModal'));
+    modal.hide();
+    
+    // Optimize with selected template
+    optimizeResume();
+}
+
+function showLoading(text) {
+    document.getElementById('loadingText').textContent = text;
+    const modal = new bootstrap.Modal(document.getElementById('loadingModal'));
+    modal.show();
+}
+
+function hideLoading() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('loadingModal'));
+    modal.hide();
+}
+</script>
+{% endblock %}

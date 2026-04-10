@@ -1,0 +1,118 @@
+@app.route("/generate_detailed_plan", methods=["POST"])
+def generate_detailed_plan():
+    """Step 2: Generate deep intelligence for selected roles."""
+    try:
+        data = request.get_json()
+        resume_text = data.get("resume_text", "")
+        selected_roles = data.get("selected_roles", [])
+        career_level = data.get("career_level", "Entry-Level")
+        
+        if not resume_text or not selected_roles:
+            return jsonify({"status": "error", "message": "Missing data"}), 400
+
+        clean_sections = parse_resume_sections(resume_text)
+        
+        # Format experience
+        exp_list = clean_sections.get('experience', [])
+        formatted_exp = ""
+        for exp in exp_list:
+            formatted_exp += f"{exp.get('title', 'Role')} at {exp.get('company', 'Company')} ({exp.get('duration', 'N/A')})\n"
+            for ach in exp.get('achievements', []):
+                formatted_exp += f"- {ach}\n"
+
+        resume_data = {
+            "skills": clean_sections.get("skills", []),
+            "projects": clean_sections.get("projects", []),
+            "education": clean_sections.get("education", []),
+            "experience": formatted_exp or "Fresher",
+            "other": clean_sections.get("certifications", []),
+        }
+
+        growth_plan = generate_detailed_growth_plan(resume_data, selected_roles, resume_text, career_level)
+        
+        return jsonify({
+            "status": "success",
+            "growth_plan": growth_plan
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": f"Server error: {str(e)}"}), 500
+
+@app.route('/api/market-insights', methods=['POST'])
+def get_market_insights():
+    """Dynamic API to fetch real-time job market insights using AI"""
+    try:
+        data = request.json
+        role = data.get('role', 'Software Engineer')
+        skills = data.get('skills', [])
+        
+        prompt = f"""
+Given the job role: {role}
+And skills: {skills}
+
+Generate realistic job market insights in India including:
+- Demand (Low/Medium/High)
+- Competition
+- Trend (Rising/Stable/Declining)
+- Entry, Mid, Top salary (in LPA)
+- Top industries hiring
+- Top companies hiring
+- Short market insight
+
+Return strictly in JSON format with this structure:
+{{
+  "demand": "",
+  "competition": "",
+  "trend": "",
+  "salaries": {{
+    "entry": "₹X–Y LPA",
+    "mid": "₹A–B LPA",
+    "top": "₹Z+ LPA"
+  }},
+  "industries": [],
+  "companies": [],
+  "insight": ""
+}}
+"""
+        from src.llm_client import call_llm
+        import json
+        import re
+        raw_response = call_llm(prompt)
+        
+        # Robust JSON extraction
+        json_match = re.search(r'\{.*\}', raw_response, re.DOTALL)
+        if json_match:
+            json_str = json_match.group(0)
+        else:
+            json_str = raw_response.strip()
+            
+        try:
+            insight_data = json.loads(json_str)
+            # Ensure all keys exist to avoid frontend stuck "..."
+            default_structure = {
+                "demand": "High", "competition": "Medium", "trend": "Rising",
+                "salaries": {"entry": "N/A", "mid": "N/A", "top": "N/A"},
+                "industries": [], "companies": [], "insight": "Analysis complete."
+            }
+            for key in default_structure:
+                if key not in insight_data:
+                    insight_data[key] = default_structure[key]
+            
+            return jsonify(insight_data)
+        except json.JSONDecodeError:
+            print(f"JSON Parse Error. Raw: {raw_response}")
+            # Fallback for parsing failure
+            return jsonify({
+                "demand": "High", "competition": "Medium", "trend": "Rising",
+                "salaries": {"entry": "₹4-digit LPA", "mid": "₹10-digit LPA", "top": "₹20+ LPA"},
+                "industries": ["Tech", "IT"], "companies": ["TCS", "Infosys"], "insight": "Market is growing."
+            })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)

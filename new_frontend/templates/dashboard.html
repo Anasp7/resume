@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Resume Optimization Platform{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold mb-4">Transform Your Career Journey</h1>
+                <p class="lead mb-4">
+                    Optimize your resume for ATS systems and get personalized career guidance with AI-powered insights.
+                </p>
+                <div class="d-flex gap-3">
+                    <a href="/resume-optimization" class="btn btn-light btn-lg">
+                        <i class="fas fa-file-alt me-2"></i> Optimize Resume
+                    </a>
+                    <a href="/career-recommendation" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-compass me-2"></i> Career Guidance
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="text-center">
+                    <i class="fas fa-chart-line" style="font-size: 12rem; opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="row text-center mb-5">
+            <div class="col-12">
+                <h2 class="display-5 fw-bold">Choose Your Path</h2>
+                <p class="lead text-muted">Select the service that best fits your current needs</p>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            <!-- Resume Optimization Card -->
+            <div class="col-md-6">
+                <div class="card feature-card h-100">
+                    <div class="card-body p-4">
+                        <div class="text-center mb-4">
+                            <div class="score-circle bg-primary text-white mb-3">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <h3 class="card-title fw-bold">Resume Optimization</h3>
+                        </div>
+                        <p class="card-text text-muted mb-4">
+                            Transform your resume into an ATS-friendly, professionally optimized document that stands out to recruiters.
+                        </p>
+                        <ul class="list-unstyled mb-4">
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> ATS Optimization</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Keyword Enhancement</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Formatting Improvements</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Role-Specific Tailoring</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Multiple Export Formats</li>
+                        </ul>
+                        <div class="d-grid">
+                            <a href="/resume-optimization" class="btn btn-primary">
+                                <i class="fas fa-arrow-right me-2"></i> Get Started
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Career Recommendation Card -->
+            <div class="col-md-6">
+                <div class="card feature-card h-100">
+                    <div class="card-body p-4">
+                        <div class="text-center mb-4">
+                            <div class="score-circle bg-success text-white mb-3">
+                                <i class="fas fa-compass"></i>
+                            </div>
+                            <h3 class="card-title fw-bold">Career Guidance</h3>
+                        </div>
+                        <p class="card-text text-muted mb-4">
+                            Get personalized career recommendations, skill gap analysis, and a comprehensive growth plan for your professional journey.
+                        </p>
+                        <ul class="list-unstyled mb-4">
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Career Role Recommendations</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Skill Gap Analysis</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Growth Roadmap</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Certification Suggestions</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Project Recommendations</li>
+                        </ul>
+                        <div class="d-grid">
+                            <a href="/career-recommendation" class="btn btn-success">
+                                <i class="fas fa-arrow-right me-2"></i> Explore Careers
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Career Growth Plan Card -->
+            <div class="col-md-4">
+                <div class="card feature-card h-100">
+                    <div class="card-body p-4">
+                        <div class="text-center mb-4">
+                            <div class="score-circle bg-info text-white mb-3">
+                                <i class="fas fa-route"></i>
+                            </div>
+                            <h3 class="card-title fw-bold">Growth Plan</h3>
+                        </div>
+                        <p class="card-text text-muted mb-4">
+                            Get a comprehensive career growth roadmap with skill development plans and actionable milestones.
+                        </p>
+                        <ul class="list-unstyled mb-4">
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Personalized Timeline</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Skill Roadmap</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Learning Resources</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Action Plan</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Progress Tracking</li>
+                        </ul>
+                        <div class="d-grid">
+                            <a href="/career-growth-plan" class="btn btn-info">
+                                <i class="fas fa-arrow-right me-2"></i> Plan Growth
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-md-3 mb-3">
+                <h2 class="display-4 fw-bold text-primary">10+</h2>
+                <p class="text-muted">Career Roles</p>
+            </div>
+            <div class="col-md-3 mb-3">
+                <h2 class="display-4 fw-bold text-success">85%</h2>
+                <p class="text-muted">Accuracy Rate</p>
+            </div>
+            <div class="col-md-3 mb-3">
+                <h2 class="display-4 fw-bold text-info">50+</h2>
+                <p class="text-muted">Skills Analyzed</p>
+            </div>
+            <div class="col-md-3 mb-3">
+                <h2 class="display-4 fw-bold text-warning">3</h2>
+                <p class="text-muted">Export Formats</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works -->
+<section class="py-5">
+    <div class="container">
+        <div class="row text-center mb-5">
+            <div class="col-12">
+                <h2 class="display-5 fw-bold">How It Works</h2>
+                <p class="lead text-muted">Get started in just a few simple steps</p>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="text-center">
+                    <div class="progress-step mb-3 rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <span class="fw-bold">1</span>
+                    </div>
+                    <h5>Upload Resume</h5>
+                    <p class="text-muted">Upload your existing resume in PDF, DOCX, or TXT format</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-center">
+                    <div class="progress-step mb-3 rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <span class="fw-bold">2</span>
+                    </div>
+                    <h5>AI Analysis</h5>
+                    <p class="text-muted">Our AI analyzes your resume and identifies improvement areas</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-center">
+                    <div class="progress-step mb-3 rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <span class="fw-bold">3</span>
+                    </div>
+                    <h5>Get Results</h5>
+                    <p class="text-muted">Receive optimized resume and personalized career guidance</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

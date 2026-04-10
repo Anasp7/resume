@@ -1,0 +1,1297 @@
+{% extends "base.html" %}
+
+{% block title %}Career Growth Plan - Resume Optimization Platform{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ===== BASE CARD TRANSITIONS ===== */
+    .career-card {
+        transition: all 0.3s cubic-bezier(.25,.8,.25,1);
+        border-left: 4px solid transparent;
+        margin-bottom: 15px;
+    }
+    .career-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        border-left-color: #667eea;
+    }
+    .resource-card { transition: all 0.3s ease; height: 100%; }
+    .resource-card:hover { transform: translateY(-4px); box-shadow: 0 8px 28px rgba(0,0,0,0.12); }
+
+    /* ===== PROGRESS STEPS ROADMAP ===== */
+    .roadmap-steps-container {
+        position: relative;
+        padding: 0 0 10px 0;
+    }
+    .roadmap-step {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 0;
+        position: relative;
+    }
+    .roadmap-step:not(:last-child) .step-connector {
+        position: absolute;
+        left: 27px;
+        top: 56px;
+        bottom: -20px;
+        width: 3px;
+        background: linear-gradient(to bottom, #667eea, #764ba2, #17a2b8);
+        z-index: 0;
+    }
+    .step-number-col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 56px;
+        position: relative;
+        z-index: 1;
+    }
+    .step-circle {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        font-weight: 900;
+        flex-shrink: 0;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+        border: 3px solid white;
+        position: relative;
+        z-index: 2;
+    }
+    .step-circle.phase-1 { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+    .step-circle.phase-2 { background: linear-gradient(135deg, #28a745, #20c997); color: white; }
+    .step-circle.phase-3 { background: linear-gradient(135deg, #17a2b8, #007bff); color: white; }
+    .step-body {
+        flex: 1;
+        margin-bottom: 36px;
+    }
+    .step-phase-header {
+        padding: 16px 20px 14px 20px;
+        border-radius: 14px 14px 0 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .step-phase-header.phase-1 { background: linear-gradient(90deg, #667eea15, #764ba210); border-left: 4px solid #667eea; }
+    .step-phase-header.phase-2 { background: linear-gradient(90deg, #28a74515, #20c99710); border-left: 4px solid #28a745; }
+    .step-phase-header.phase-3 { background: linear-gradient(90deg, #17a2b815, #007bff10); border-left: 4px solid #17a2b8; }
+    .phase-title { font-size: 1.05rem; font-weight: 800; margin: 0; }
+    .phase-dur-badge { font-size: 0.72rem; font-weight: 600; padding: 4px 12px; border-radius: 20px; }
+    .step-phase-content {
+        background: white;
+        border-radius: 0 0 14px 14px;
+        padding: 20px;
+        border: 1px solid rgba(0,0,0,0.07);
+        border-top: none;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    }
+    .dod-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        margin-bottom: 16px;
+    }
+    .dod-badge.phase-1 { background: #667eea18; color: #5a67d8; border: 1.5px solid #667eea50; }
+    .dod-badge.phase-2 { background: #28a74518; color: #1e7e34; border: 1.5px solid #28a74550; }
+    .dod-badge.phase-3 { background: #17a2b818; color: #117a8b; border: 1.5px solid #17a2b850; }
+
+    /* ===== HERO PROJECT BADGE ===== */
+    .hero-project-card {
+        border: 2px solid #ffc107;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #fff9e6, #fffdf5);
+        box-shadow: 0 0 0 4px #ffc10715, 0 6px 20px rgba(255,193,7,0.15);
+        position: relative;
+        overflow: hidden;
+        padding: 18px;
+        margin-bottom: 18px;
+    }
+    .hero-project-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #ffc107, #ff9800, #ffc107);
+        background-size: 200% 100%;
+        animation: shimmer 2.5s linear infinite;
+    }
+    @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
+    .hero-badge-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: linear-gradient(135deg, #ffc107, #ff9800);
+        color: white;
+        font-weight: 800;
+        font-size: 0.72rem;
+        padding: 4px 12px;
+        border-radius: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 8px rgba(255,193,7,0.5);
+        margin-bottom: 10px;
+    }
+
+    /* ===== SALARY UNLOCK INDICATOR ===== */
+    .salary-unlock-card {
+        border-radius: 12px;
+        padding: 14px 18px;
+        margin-bottom: 16px;
+        background: linear-gradient(135deg, #d4edda, #c3e6cb);
+        border-left: 4px solid #28a745;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        position: relative;
+        overflow: hidden;
+    }
+    .salary-unlock-card::after {
+        content: '💰';
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.8rem;
+        opacity: 0.2;
+    }
+    .salary-unlock-amount {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: #155724;
+        display: block;
+    }
+    .salary-unlock-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #1e7e34;
+        font-weight: 600;
+    }
+
+    /* ===== CANDIDATE STORY ===== */
+    .candidate-story-card {
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        border-left: 4px solid #6c757d;
+        border-radius: 10px;
+        padding: 16px 18px;
+        margin-bottom: 16px;
+        position: relative;
+    }
+    .candidate-story-card::before {
+        content: '\201C';
+        position: absolute;
+        top: -8px; left: 12px;
+        font-size: 3rem;
+        color: #6c757d;
+        opacity: 0.25;
+        font-family: Georgia, serif;
+        line-height: 1;
+    }
+
+    /* ===== SKILL PROGRESS BARS ===== */
+    .skill-progress {
+        height: 8px;
+        border-radius: 4px;
+        background: #e9ecef;
+        overflow: hidden;
+        margin-bottom: 10px;
+    }
+    .skill-progress .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        transition: width 1.2s cubic-bezier(.25,.8,.25,1);
+    }
+
+    /* ===== MISC ===== */
+    .timeline-item {
+        position: relative;
+        padding-left: 28px;
+        margin-bottom: 18px;
+        border-left: 2px solid #dee2e6;
+    }
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -5px; top: 5px;
+        width: 10px; height: 10px;
+        border-radius: 50%;
+        background: #667eea;
+        border: 2px solid white;
+    }
+    .focus-area-item {
+        background: #f8f9ff;
+        border-left: 3px solid #667eea;
+        border-radius: 6px;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: #2d3748;
+    }
+    .ritual-box {
+        background: #1a1a2e;
+        color: #e2e8f0;
+        border-radius: 12px;
+        padding: 16px 18px;
+        font-size: 0.83rem;
+        line-height: 1.7;
+        white-space: pre-line;
+        margin-bottom: 16px;
+    }
+    .ritual-box .ritual-label {
+        color: #ffc107;
+        font-weight: 700;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        display: block;
+        margin-bottom: 8px;
+    }
+    .outcomes-list li {
+        font-size: 0.83rem;
+        padding: 5px 0;
+        border-bottom: 1px solid #f1f3f5;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        color: #2d3748;
+    }
+    .outcomes-list li:last-child { border-bottom: none; }
+    .outcomes-list li i { margin-top: 2px; flex-shrink: 0; }
+</style>
+
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-5 fw-bold">Career Growth Plan</h1>
+            <p class="lead text-muted">Your personalized roadmap for professional development and career advancement</p>
+        </div>
+    </div>
+
+    <!-- Upload Section -->
+    <div class="row mb-4" id="uploadSection">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h5 class="card-title mb-4">
+                        <i class="fas fa-upload me-2 text-primary"></i>Upload Your Resume
+                    </h5>
+                    <div class="upload-area" id="uploadArea">
+                        <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                        <h5>Drop your resume here or click to browse</h5>
+                        <p class="text-muted">Supported formats: PDF, DOCX, TXT</p>
+                        <input type="file" id="resumeFile" accept=".pdf,.docx,.txt" style="display: none;">
+                        <button class="btn btn-primary mt-3 px-4"
+                            onclick="document.getElementById('resumeFile').click()">
+                            <i class="fas fa-folder-open me-2"></i> Choose File
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Role Selection Section (Step 2) -->
+    <div id="roleSelectionSection" style="display: none;" class="mb-5">
+        <div class="row mb-4">
+            <div class="col-12 text-center">
+                <h2 class="fw-bold">Step 2: Choose Your Path</h2>
+                <p class="text-muted">We've detected these possible roles based on your skills. Select the ones you want
+                    to specialize in.</p>
+            </div>
+        </div>
+        <div class="row g-4" id="roleSelectionGrid">
+            <!-- Role cards with checkboxes -->
+        </div>
+        <div class="text-center mt-5">
+            <button class="btn btn-lg btn-success px-5 shadow" id="confirmRolesBtn" onclick="confirmRolesSelection()">
+                <i class="fas fa-magic me-2"></i>Generate Deep Analysis for Selected Roles
+            </button>
+        </div>
+    </div>
+
+    <!-- AI Career Intelligence Dashboard -->
+    <div id="resultsDashboard" style="display: none;">
+        <!-- SECTION 1: TARGET JOB ROLES -->
+        <div class="row mb-5" id="targetRolesSection">
+            <div class="col-12">
+                <h3 class="fw-bold mb-4">
+                    <i class="fas fa-bullseye text-primary me-2"></i>Detailed Role Match & Skill Gaps
+                </h3>
+                <div class="row g-4" id="targetRolesGrid">
+                    <!-- Target roles will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 2 & 3: MARKET ANALYSIS & DETAILS -->
+        <div class="row mb-5" id="marketSection">
+            <div class="col-md-7">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold mb-4">
+                            <i class="fas fa-chart-pie text-success me-2"></i>Job Market Possibility Analysis (India)
+                        </h5>
+                        <div id="marketAnalysisList">
+                            <!-- Market analysis stats will be grouped here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="card h-100 border-0 shadow-sm bg-primary text-white">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold mb-4">
+                            <i class="fas fa-info-circle me-2"></i>Market Insights & Details
+                        </h5>
+                        <div id="marketDetailsList">
+                            <!-- Salary and industry details -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 4: RECOMMENDED COURSES -->
+        <div class="row mb-5" id="coursesSection">
+            <div class="col-12">
+                <h3 class="fw-bold mb-4">
+                    <i class="fas fa-graduation-cap text-info me-2"></i>Recommended Courses for Skill Improvement
+                </h3>
+                <div class="row g-3" id="coursesGrid">
+                    <!-- Courses will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 5: CAREER ROADMAP — PROGRESS STEPS -->
+        <div class="row mb-5" id="roadmapSection">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm" style="background: #fafbff;">
+                    <div class="card-body p-4 p-lg-5">
+                        <div class="text-center mb-5">
+                            <span class="badge bg-warning text-dark fw-bold px-3 py-2 mb-3" style="font-size:0.8rem;">🗺️ YOUR SUCCESS MAP</span>
+                            <h3 class="fw-bold mb-1">Your Phase-Based CS Career Roadmap</h3>
+                            <p class="text-muted small">Each phase has a clear Definition of Done — you move forward only when the checklist is complete.</p>
+                            <!-- Progress indicator bar -->
+                            <div class="d-flex justify-content-center align-items-center gap-2 mt-3 flex-wrap">
+                                <span class="badge rounded-pill" style="background:#667eea; font-size:0.75rem; padding: 7px 16px;">① Foundation Sprint · 0-3 mo</span>
+                                <i class="fas fa-long-arrow-alt-right text-muted"></i>
+                                <span class="badge rounded-pill" style="background:#28a745; font-size:0.75rem; padding: 7px 16px;">② Job-Ready Sprint · 3-8 mo</span>
+                                <i class="fas fa-long-arrow-alt-right text-muted"></i>
+                                <span class="badge rounded-pill" style="background:#17a2b8; font-size:0.75rem; padding: 7px 16px;">③ Senior Path Sprint · 8-18 mo</span>
+                            </div>
+                        </div>
+
+                        <div class="roadmap-steps-container" id="roadmapStepsContainer">
+                            <!-- STEP 1 -->
+                            <div class="roadmap-step" id="roadmapStep1">
+                                <div class="step-connector"></div>
+                                <div class="step-number-col">
+                                    <div class="step-circle phase-1">🚀</div>
+                                </div>
+                                <div class="step-body">
+                                    <div class="step-phase-header phase-1">
+                                        <div>
+                                            <p class="phase-title text-primary">Phase 1 — The Foundation Sprint</p>
+                                            <small class="text-muted">Months 0–3</small>
+                                        </div>
+                                        <span class="phase-dur-badge bg-primary text-white">🎯 Goal: Internship Ready</span>
+                                    </div>
+                                    <div class="step-phase-content" id="roadmapShortTerm"></div>
+                                </div>
+                            </div>
+
+                            <!-- STEP 2 -->
+                            <div class="roadmap-step" id="roadmapStep2">
+                                <div class="step-connector"></div>
+                                <div class="step-number-col">
+                                    <div class="step-circle phase-2">🌱</div>
+                                </div>
+                                <div class="step-body">
+                                    <div class="step-phase-header phase-2">
+                                        <div>
+                                            <p class="phase-title text-success">Phase 2 — The Job-Ready Sprint</p>
+                                            <small class="text-muted">Months 3–8</small>
+                                        </div>
+                                        <span class="phase-dur-badge bg-success text-white">🎯 Goal: Full-Time Job Ready</span>
+                                    </div>
+                                    <div class="step-phase-content" id="roadmapMediumTerm"></div>
+                                </div>
+                            </div>
+
+                            <!-- STEP 3 -->
+                            <div class="roadmap-step" id="roadmapStep3">
+                                <div class="step-number-col">
+                                    <div class="step-circle phase-3">🏆</div>
+                                </div>
+                                <div class="step-body">
+                                    <div class="step-phase-header phase-3">
+                                        <div>
+                                            <p class="phase-title" style="color:#117a8b;">Phase 3 — The Senior Path Sprint</p>
+                                            <small class="text-muted">Months 8–18</small>
+                                        </div>
+                                        <span class="phase-dur-badge text-white" style="background:#17a2b8;">🎯 Goal: Senior Path Ready</span>
+                                    </div>
+                                    <div class="step-phase-content" id="roadmapLongTerm"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mb-5">
+            <button class="btn btn-lg btn-primary px-5 shadow" onclick="window.print()">
+                <i class="fas fa-download me-2"></i>Download Your Comprehensive Analysis
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Course Detail Modal -->
+<div class="modal fade" id="courseDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white border-0">
+                <h5 class="modal-title fw-bold" id="courseModalTitle">Course Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row align-items-start mb-4">
+                    <div class="col-auto">
+                        <div class="p-3 bg-primary-subtle rounded-3 text-primary">
+                            <i class="fas fa-university fa-2x"></i>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <h4 class="fw-bold mb-1" id="courseModalName">Course Name</h4>
+                        <p class="text-primary fw-bold mb-0" id="courseModalUniv">University Name</p>
+                        <span class="badge bg-light text-dark border small" id="courseModalPlatform">Coursera</span>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="fw-bold text-dark"><i class="fas fa-info-circle me-2 text-primary"></i>About this Course
+                    </h6>
+                    <p class="text-muted" id="courseModalDesc">Detailed course description goes here.</p>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6 class="fw-bold text-dark"><i class="fas fa-clock me-2 text-primary"></i>Duration</h6>
+                        <p class="text-muted" id="courseModalDuration">6 Weeks</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="fw-bold text-dark"><i class="fas fa-signal me-2 text-primary"></i>Difficulty</h6>
+                        <p class="text-muted" id="courseModalDifficulty">Beginner</p>
+                    </div>
+                </div>
+
+                <div>
+                    <h6 class="fw-bold text-dark mb-3"><i class="fas fa-list-ul me-2 text-primary"></i>What you will
+                        learn (Syllabus)</h6>
+                    <div id="courseModalSyllabus" class="row g-2">
+                        <!-- Syllabus modules will be injected here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+                <a href="#" id="courseModalUrl" target="_blank" class="btn btn-primary px-4">Go to Platform <i
+                        class="fas fa-external-link-alt ms-2"></i></a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let resumeText = '';
+    let detectedRoles = [];
+    let careerLevel = 'Entry-Level';
+    let growthPlanData = null;
+    let marketInsightsCache = {};
+
+    async function fetchMarketInsights(roleName, skills, uniqueIdBase) {
+        try {
+            const res = await fetch("/api/market-insights", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ role: roleName, skills: skills })
+            });
+            const data = await res.json();
+            
+            if (!data.error) {
+                updateMarketUI(uniqueIdBase, data);
+            }
+        } catch (err) {
+            console.error('Market Intelligence Fetch Failed:', err);
+            // Fallback for safety
+            updateMarketUI(uniqueIdBase, {
+                demand: "High", competition: "Medium", trend: "Rising",
+                salaries: { entry: "4-6 LPA", mid: "10-18 LPA", top: "25+ LPA" },
+                industries: ["IT Services"],
+                companies: ["TCS", "Infosys", "Zoho", "Amazon"],
+                insight: "High demand for this technical role in the current Indian market."
+            });
+        }
+    }
+
+    function updateMarketUI(baseId, data) {
+        // Update all instances on the page for this role
+        const elements = [
+            { id: `${baseId}-demand`, val: data.demand },
+            { id: `${baseId}-competition`, val: data.competition },
+            { id: `${baseId}-trend`, val: data.trend },
+            { id: `${baseId}-barrier`, val: data.barrier || 'Medium' }, // Fallback if missing
+            { id: `${baseId}-insight`, val: data.insight },
+            { id: `${baseId}-entry-sal`, val: data.salaries?.entry },
+            { id: `${baseId}-mid-sal`, val: data.salaries?.mid },
+            { id: `${baseId}-top-sal`, val: data.salaries?.top },
+            { id: `${baseId}-industries`, val: Array.isArray(data.industries) ? data.industries.join(', ') : data.industries },
+            { id: `${baseId}-companies`, val: Array.isArray(data.companies) ? data.companies.join(', ') : data.companies }
+        ];
+
+        elements.forEach(el => {
+            const dom = document.getElementById(el.id);
+            if (dom) {
+                if (el.id.includes('trend')) {
+                    dom.className = `fw-bold small ${el.val?.includes('Rising') ? 'text-success' : (el.val?.includes('Stable') ? 'text-primary' : 'text-danger')}`;
+                }
+                let val = el.val;
+                if (Array.isArray(val)) {
+                    // Logic to handle array data: Render as professional badges
+                    const badges = val.map(item => `<span class="badge bg-white bg-opacity-10 border border-white border-opacity-25 me-1 mb-1 fw-normal">${item}</span>`).join('');
+                    val = badges || 'Various';
+                } else if (val && typeof val === 'object') {
+                    // Logic to handle nested company objects: {service: [], product: [], bigtech: []}
+                    const flattened = [];
+                    // Prioritize Big Tech and Product for the UI
+                    if (val.bigtech) flattened.push(...val.bigtech);
+                    if (val.product) flattened.push(...val.product);
+                    if (val.service) flattened.push(...val.service);
+                    
+                    const badges = flattened.slice(0, 6).map(item => `<span class="badge bg-white bg-opacity-10 border border-white border-opacity-25 me-1 mb-1 fw-normal">${item}</span>`).join('');
+                    val = badges || 'N/A';
+                } else if (typeof val === 'string' && val.includes(',')) {
+                    // Handle strings that are comma-separated
+                    const badges = val.split(',').map(item => `<span class="badge bg-white bg-opacity-10 border border-white border-opacity-25 me-1 mb-1 fw-normal">${item.trim()}</span>`).join('');
+                    val = badges || val;
+                }
+                dom.innerHTML = val || 'N/A';
+            }
+        });
+
+        // Also update the role cards in the selection screen if they exist
+        const cardDemand = document.getElementById(`card-demand-${baseId}`);
+        if (cardDemand) cardDemand.innerHTML = `${data.demand} Demand`;
+        const cardInsight = document.getElementById(`card-insight-${baseId}`);
+        if (cardInsight) cardInsight.innerHTML = data.insight;
+    }
+
+    function showCourseDetails(encodedCourse) {
+        try {
+            const c = JSON.parse(decodeURIComponent(encodedCourse));
+
+            document.getElementById('courseModalName').innerText = c.title || 'Advanced Course';
+            document.getElementById('courseModalUniv').innerText = c.provider || c.university || c.institution || 'Top University';
+            document.getElementById('courseModalPlatform').innerText = c.platform || 'Partner Platform';
+            document.getElementById('courseModalDesc').innerText = c.description || 'This course is specifically curated to bridge your identified skill gaps and prepare you for high-impact roles.';
+            document.getElementById('courseModalDuration').innerText = c.duration || 'Self-Paced';
+            document.getElementById('courseModalDifficulty').innerText = c.difficulty || 'All Levels';
+            document.getElementById('courseModalUrl').href = c.url || '#';
+
+            const syllabusContainer = document.getElementById('courseModalSyllabus');
+            syllabusContainer.innerHTML = '';
+
+            const skillList = Array.isArray(c.skills) ? c.skills : (Array.isArray(c.syllabus) ? c.syllabus : (c.focus ? [c.focus] : ["Foundations", "Core Modules", "Assignments", "Final Exam"]));
+
+            skillList.forEach(item => {
+                syllabusContainer.innerHTML += `
+                    <div class="col-md-6">
+                        <div class="p-2 border rounded-2 bg-light-subtle d-flex align-items-center h-100">
+                            <i class="fas fa-check text-primary me-2 opacity-75"></i>
+                            <span class="small fw-medium">${item}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            const courseModal = new bootstrap.Modal(document.getElementById('courseDetailModal'));
+            courseModal.show();
+        } catch (e) {
+            console.error("Error displaying course details:", e);
+        }
+    }
+
+    // Upload functionality
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('resumeFile');
+
+    uploadArea.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+    });
+
+    function handleFiles(files) {
+        if (files.length === 0) return;
+
+        const file = files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const uploadArea = document.getElementById('uploadArea');
+        const originalContent = uploadArea.innerHTML;
+        uploadArea.innerHTML = `
+            <div class="py-4">
+                <div class="spinner-border text-primary mb-3" role="status"></div>
+                <h5>Analyzing your resume...</h5>
+                <p class="text-muted">Extracting technical skills and profile data</p>
+            </div>
+        `;
+
+        fetch('/api/upload-resume', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    resumeText = data.resume_text;
+                    detectCareerRoles();
+                } else {
+                    uploadArea.innerHTML = originalContent;
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Upload error:', error);
+                uploadArea.innerHTML = originalContent;
+                alert('Upload error: ' + error);
+            });
+    }
+
+    function detectCareerRoles() {
+        const uploadArea = document.getElementById('uploadArea');
+        uploadArea.innerHTML = `
+            <div class="py-4">
+                <div class="spinner-border text-success mb-3" role="status"></div>
+                <h5>Detecting suitable roles...</h5>
+                <p class="text-muted">Matching your skills against industry roles</p>
+            </div>
+        `;
+
+        fetch('/detect_career_roles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ resume_text: resumeText })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    detectedRoles = data.roles;
+                    careerLevel = data.career_level || 'Entry-Level';
+                    document.getElementById('uploadSection').style.display = 'none';
+                    document.getElementById('roleSelectionSection').style.display = 'block';
+                    renderRoleSelection();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            });
+    }
+
+    function renderRoleSelection() {
+        const grid = document.getElementById('roleSelectionGrid');
+        grid.innerHTML = '';
+
+        detectedRoles.forEach((role, index) => {
+            const market = role.market_analysis || {};
+            grid.innerHTML += `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 border-0 shadow-sm career-card role-selectable-card" 
+                         onclick="toggleRoleSelection(this, ${index})" 
+                         style="cursor: pointer; position: relative;">
+                        <input type="checkbox" class="role-checkbox d-none" id="role-${index}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h5 class="fw-bold mb-1 text-primary">${role.role}</h5>
+                                    <span class="badge bg-success-subtle text-success small border-0" id="card-demand-role-${index}">Loading Demand...</span>
+                                </div>
+                                <span class="badge bg-primary rounded-pill">${role.match}% Match</span>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <p class="small text-muted mb-2"><strong>Market Insight:</strong> <span id="card-insight-role-${index}">Fetching insights...</span></p>
+                            </div>
+
+                            <div class="mb-3">
+                                <p class="small text-muted mb-1">Core Skills Identified:</p>
+                                <div class="d-flex flex-wrap gap-1">
+                                    ${(role.key_skills || []).slice(0, 4).map(s => `<span class="badge bg-light text-dark border-0 small">${s}</span>`).join('')}
+                                    ${role.key_skills.length > 4 ? `<span class="badge bg-light text-muted small">+${role.key_skills.length - 4} more</span>` : ''}
+                                </div>
+                            </div>
+
+                            ${role.recommended_courses && role.recommended_courses.length > 0 ? `
+                            <div class="mb-2">
+                                <p class="small text-primary mb-1 fw-bold"><i class="fas fa-graduation-cap me-1"></i>Improvement Courses:</p>
+                                <ul class="list-unstyled mb-0 small text-muted">
+                                    ${role.recommended_courses.slice(0, 3).map(c => `
+                                        <li class="mb-1 text-truncate">
+                                            <i class="fas fa-play-circle me-1 opacity-50"></i>
+                                            <a href="javascript:void(0)" class="text-decoration-none text-muted" onclick="event.stopPropagation(); showCourseDetails('${encodeURIComponent(JSON.stringify(c))}')">
+                                                ${c.title || c} — <span class="fw-bold text-primary">${c.provider || c.institution || c.university || ''}</span> <span class="badge bg-light text-dark small ms-1">${c.platform || ''}</span>
+                                            </a>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>` : ''}
+                            
+                            <div class="selection-indicator mt-3 text-end" style="opacity: 0.2;">
+                                <i class="fas fa-check-circle fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            // Trigger fetch for each role
+            fetchMarketInsights(role.role, role.key_skills || [], `role-${index}`);
+        });
+    }
+
+    function toggleRoleSelection(element, index) {
+        const checkbox = document.getElementById(`role-${index}`);
+        checkbox.checked = !checkbox.checked;
+
+        if (checkbox.checked) {
+            element.classList.add('border', 'border-primary', 'shadow-lg');
+            element.style.transform = 'translateY(-5px)';
+            element.querySelector('.selection-indicator').style.opacity = '1';
+            element.querySelector('.selection-indicator').classList.add('text-primary');
+        } else {
+            element.classList.remove('border', 'border-primary', 'shadow-lg');
+            element.style.transform = 'translateY(0)';
+            element.querySelector('.selection-indicator').style.opacity = '0.3';
+            element.querySelector('.selection-indicator').classList.remove('text-primary');
+        }
+    }
+
+    function confirmRolesSelection() {
+        const selected = [];
+        detectedRoles.forEach((role, index) => {
+            if (document.getElementById(`role-${index}`).checked) {
+                selected.push(role);
+            }
+        });
+
+        if (selected.length === 0) {
+            alert('Please select at least one role to proceed.');
+            return;
+        }
+
+        const btn = document.getElementById('confirmRolesBtn');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Generating Deep Analysis...`;
+
+        fetch('/generate_detailed_plan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                resume_text: resumeText,
+                selected_roles: selected,
+                career_level: careerLevel
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    growthPlanData = data;
+                    document.getElementById('roleSelectionSection').style.display = 'none';
+                    document.getElementById('resultsDashboard').style.display = 'block';
+                    renderIntelligenceAnalysis();
+                    window.scrollTo(0, 0);
+                } else {
+                    alert('Error: ' + data.message);
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                console.error('API Error:', error);
+                alert('Analysis failed.');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            });
+    }
+
+    function renderIntelligenceAnalysis() {
+        const gp = growthPlanData.growth_plan;
+
+        // Insert Domain and Overview at the top of resultsDashboard
+        const dashboard = document.getElementById('resultsDashboard');
+        const overviewHtml = `
+            <div class="row mb-5">
+                <div class="col-12">
+                    <div class="card border-0 shadow-lg bg-white overflow-hidden">
+                        <div class="row g-0">
+                            <div class="col-md-4 bg-primary text-white p-4 d-flex flex-column justify-content-center text-center">
+                                <h6 class="text-uppercase opacity-75 small fw-bold mb-2">Primary Career Domain</h6>
+                                <h2 class="fw-bold mb-3">${gp.career_domain || 'Technology & Engineering'}</h2>
+                                <div class="mt-2 text-center w-100">
+                                    <div class="display-4 fw-bold mb-1">${gp.career_overview?.career_readiness_score || 0}%</div>
+                                    <div class="small opacity-75">Career Readiness Score</div>
+                                </div>
+                            </div>
+                            <div class="col-md-8 p-4">
+                                <div class="row">
+                                    <div class="col-md-6 mb-4">
+                                        <h6 class="fw-bold text-primary mb-3"><i class="fas fa-id-badge me-2"></i>Profile Overview</h6>
+                                        <ul class="list-unstyled mb-0 text-muted">
+                                            <li class="mb-3"><i class="fas fa-chart-line me-2 text-success"></i><strong>Career Level:</strong> <span class="text-dark fw-medium ms-1">${gp.career_overview?.experience_level || 'Professional'}</span></li>
+                                            <li class="mb-2">
+                                                <div class="d-flex align-items-start">
+                                                    <i class="fas fa-microchip mt-1 me-2 text-primary"></i>
+                                                    <div>
+                                                        <strong>Core Skills:</strong> <span class="badge bg-light text-dark rounded-pill border small ms-1">${gp.career_overview?.core_skills?.length || 0}</span>
+                                                        <div class="d-flex flex-wrap gap-1 mt-1 mb-2">
+                                                            ${(gp.career_overview?.core_skills || []).length > 0 ? (gp.career_overview?.core_skills || []).map(s => `<span class="badge bg-primary-subtle text-primary border-0" style="font-size: 0.70rem;">${s}</span>`).join('') : '<span class="text-muted small">None detected</span>'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li class="mb-2">
+                                                <div class="d-flex align-items-start">
+                                                    <i class="fas fa-layer-group mt-1 me-2 text-info"></i>
+                                                    <div>
+                                                        <strong>Supporting Skills:</strong> <span class="badge bg-light text-dark rounded-pill border small ms-1">${gp.career_overview?.supporting_skills?.length || 0}</span>
+                                                        <div class="d-flex flex-wrap gap-1 mt-1">
+                                                            ${(gp.career_overview?.supporting_skills || []).length > 0 ? (gp.career_overview?.supporting_skills || []).map(s => `<span class="badge bg-info-subtle text-info border-0" style="font-size: 0.70rem;">${s}</span>`).join('') : '<span class="text-muted small">None detected</span>'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-6 mb-4">
+                                        <h6 class="fw-bold text-primary mb-3"><i class="fas fa-cogs me-2"></i>Analytical Metrics</h6>
+                                        <div class="mb-4">
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <small class="fw-bold text-muted text-uppercase" style="letter-spacing: 0.5px; font-size: 0.70rem;">Skill Strength Score</small>
+                                                <small class="fw-bold text-primary">${gp.career_overview?.skill_strength_score || 0}%</small>
+                                            </div>
+                                            <div class="progress" style="height: 6px;">
+                                                <div class="progress-bar bg-primary" role="progressbar" style="width: ${gp.career_overview?.skill_strength_score || 0}%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Clear existing custom overview if any and prepend
+        const existingOverview = document.getElementById('ai-overview-header');
+        if (existingOverview) existingOverview.remove();
+
+        const overviewWrapper = document.createElement('div');
+        overviewWrapper.id = 'ai-overview-header';
+        overviewWrapper.innerHTML = overviewHtml;
+        dashboard.prepend(overviewWrapper);
+
+        // Render Roles & Missing Skills
+        const targetGrid = document.getElementById('targetRolesGrid');
+        targetGrid.innerHTML = '';
+        (gp.roles || []).forEach(role => {
+            const roleName = role.role;
+            const matchScore = role.match_percentage || 0;
+
+            // Find gaps for this specific role in the skill_gap section
+            const gapInfo = (gp.skill_gap || []).find(g => g.role === roleName) || {};
+            const detected = gapInfo.detected_skills || role.supporting_skills || [];
+            const missing = gapInfo.missing_skills || [];
+            
+            let insightText = '';
+            const formatSkillList = list => list.length > 1 ? list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1] : (list[0] || '');
+            
+            if (missing.length > 0 && detected.length > 0) {
+                insightText = `Strong foundational skills detected. Adding <strong>${formatSkillList(missing)}</strong> will significantly improve your job readiness for this role.`;
+            } else if (missing.length > 0) {
+                insightText = `Consider building core skills first. Adding <strong>${formatSkillList(missing)}</strong> is highly recommended for this role.`;
+            } else if (detected.length > 0) {
+                insightText = `Exceptional fit! You already possess key criteria for this role, including <strong>${formatSkillList(detected)}</strong>. Ready to apply.`;
+            } else {
+                insightText = `Explore foundational skills for this role to improve readiness.`;
+            }
+
+            targetGrid.innerHTML += `
+                <div class="col-md-6">
+                    <div class="card h-100 border-0 shadow-sm career-card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h5 class="fw-bold mb-0 text-primary">${roleName}</h5>
+                                <span class="badge bg-primary rounded-pill">${matchScore}% Match</span>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <h6 class="fw-bold small text-success text-uppercase mb-2">Matched Skills</h6>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        ${detected.length > 0 ? detected.map(s => `<span class="badge bg-success-subtle text-success border-0 small">${s}</span>`).join('') : '<span class="text-muted small">None detected</span>'}
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <h6 class="fw-bold small text-danger text-uppercase mb-2">Missing Skills Gap</h6>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        ${missing.length > 0 ? missing.map(s => `<span class="badge bg-danger-subtle text-danger border-0 small">${s}</span>`).join('') : '<span class="text-success small">Target criteria met!</span>'}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-2 border-top pt-3 bg-light rounded-bottom p-3">
+                                <h6 class="fw-bold small text-info text-uppercase mb-2"><i class="fas fa-lightbulb me-2"></i>Readiness Insight</h6>
+                                <p class="small text-muted mb-0" style="line-height: 1.5;">${insightText}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        // Render Market Analysis (Supports Multiple Roles)
+        const analysisList = document.getElementById('marketAnalysisList');
+        let analysisHtml = '';
+        (gp.market_analysis || []).forEach((ma, index) => {
+            const successProb = ma.success_probability || ma.success || 0;
+
+            analysisHtml += `
+                <div class="mb-5 pb-4 border-bottom last-child-no-border">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0 text-dark">${ma.role}</h6>
+                        <span class="badge bg-success-subtle text-success rounded-pill px-3">Success: ${successProb}%</span>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between text-center flex-wrap gap-2 mb-3">
+                        <div class="flex-fill border rounded py-2 px-1 bg-light shadow-sm">
+                            <small class="text-muted d-block text-uppercase" style="font-size: 0.60rem; letter-spacing: 0.5px;">Demand</small>
+                            <span class="fw-bold text-primary small" id="final-role-${index}-demand">...</span>
+                        </div>
+                        <div class="flex-fill border rounded py-2 px-1 bg-light shadow-sm">
+                            <small class="text-muted d-block text-uppercase" style="font-size: 0.60rem; letter-spacing: 0.5px;">Competition</small>
+                            <span class="fw-bold text-danger small" id="final-role-${index}-competition">...</span>
+                        </div>
+                        <div class="flex-fill border rounded py-2 px-1 bg-light shadow-sm">
+                            <small class="text-muted d-block text-uppercase" style="font-size: 0.60rem; letter-spacing: 0.5px;">Experience</small>
+                            <span class="fw-bold text-dark small text-truncate d-block mx-auto" style="max-width: 65px;">${(ma.typical_entry_experience || 'Entry').split(' ')[0]}</span>
+                        </div>
+                        <div class="flex-fill border rounded py-2 px-1 bg-light shadow-sm">
+                            <small class="text-muted d-block text-uppercase" style="font-size: 0.60rem; letter-spacing: 0.5px;">Trend</small>
+                            <span class="fw-bold small" id="final-role-${index}-trend">...</span>
+                        </div>
+                        <div class="flex-fill border rounded py-2 px-1 bg-light shadow-sm">
+                            <small class="text-muted d-block text-uppercase" style="font-size: 0.60rem; letter-spacing: 0.5px;">Barrier</small>
+                            <span class="fw-bold text-secondary small" id="final-role-${index}-barrier">...</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-light p-3 rounded shadow-sm border-start border-primary border-4 mt-2">
+                        <small class="fw-bold text-primary text-uppercase d-block mb-1" style="font-size: 0.65rem;"><i class="fas fa-lightbulb me-1"></i>Market Insight</small>
+                        <p class="small mb-0 text-secondary" style="line-height: 1.6;" id="final-role-${index}-insight">
+                            Calculating intelligence...
+                        </p>
+                    </div>
+                </div>
+            `;
+        });
+        analysisList.innerHTML = analysisHtml;
+
+        // Render Market Details (Supports Multiple Roles)
+        const detailsList = document.getElementById('marketDetailsList');
+        let detailsHtml = '';
+        (gp.job_details || []).slice(0, 5).forEach((detail, index) => {
+            detailsHtml += `
+                <div class="mb-4 bg-white bg-opacity-10 p-4 rounded shadow-sm border border-white border-opacity-10">
+                    <h6 class="fw-bold border-bottom border-white border-opacity-25 pb-2 mb-3 text-white">${detail.role}</h6>
+                    
+                    <div class="d-flex justify-content-between mb-1 small">
+                        <span class="opacity-75 text-white">Entry Salary:</span>
+                        <span class="fw-bold text-info" id="final-role-${index}-entry-sal">...</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1 small">
+                        <span class="opacity-75 text-white">Mid Salary:</span>
+                        <span class="fw-bold text-info" id="final-role-${index}-mid-sal">...</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-4 small">
+                        <span class="opacity-75 text-white">Top Salary:</span>
+                        <span class="fw-bold text-info" id="final-role-${index}-top-sal">...</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <span class="opacity-75 text-white d-block mb-1 text-uppercase" style="font-size: 0.65rem;">Top Industries:</span>
+                        <div class="text-white small fw-medium" id="final-role-${index}-industries">
+                            ...
+                        </div>
+                    </div>
+
+                    <div>
+                        <span class="opacity-75 text-white d-block mb-1 text-uppercase" style="font-size: 0.65rem;">Top Companies:</span>
+                        <div class="text-white small fw-medium" id="final-role-${index}-companies">
+                            ...
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        detailsList.innerHTML = detailsHtml;
+
+        // NOW trigger all market insight fetches once the DOM is fully stable
+        (gp.market_analysis || []).forEach((ma, index) => {
+            fetchMarketInsights(ma.role, ma.supporting_skills || [], `final-role-${index}`);
+        });
+
+        // Render Courses Grouped by Role
+        const coursesGrid = document.getElementById('coursesGrid');
+        coursesGrid.innerHTML = '';
+        (gp.roles || []).forEach(role => {
+            const courses = role.recommended_courses || [];
+            if (courses.length === 0) return;
+
+            coursesGrid.innerHTML += `
+                <div class="col-12 mb-4">
+                    <h6 class="fw-bold text-primary mb-3"><i class="fas fa-graduation-cap me-2"></i>Target Courses for ${role.role}</h6>
+                    <div class="row g-3">
+                        ${courses.map(c => `
+                                <div class="col-md-6 col-lg-4">
+                                    <a href="javascript:void(0)" class="text-decoration-none h-100 d-block" onclick="showCourseDetails('${encodeURIComponent(JSON.stringify(c))}')">
+                                        <div class="card h-100 border-0 shadow-sm resource-card">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                                    <div class="d-flex flex-column">
+                                                        <span class="badge bg-info-subtle text-info mb-1" style="width: fit-content;">${c.platform || 'E-Learning'}</span>
+                                                        <small class="fw-bold text-primary" style="font-size: 0.7rem;">${c.provider || c.institution || c.university || 'Best Pro Provider'}</small>
+                                                    </div>
+                                                    <div class="text-end">
+                                                        <span class="badge bg-light text-muted small border mb-1 d-block">${c.difficulty || 'All Levels'}</span>
+                                                        <small class="text-muted" style="font-size: 0.6rem;"><i class="fas fa-clock me-1"></i>${c.duration || 'Flexible'}</small>
+                                                    </div>
+                                                </div>
+                                                <h6 class="fw-bold mb-2 text-dark">${c.title || c}</h6>
+                                                <p class="small text-muted mb-3" style="font-size: 0.75rem; line-height: 1.4;">
+                                                    ${c.description || 'This specific course is recommended to address the identified gaps in your profile and equip you with industry-standard methodologies.'}
+                                                </p>
+                                                
+                                                ${c.skills && c.skills.length > 0 ? `
+                                                <div class="d-flex flex-wrap gap-1 mb-3">
+                                                    ${c.skills.slice(0, 3).map(s => `<span class="badge bg-success-subtle text-success small border-0" style="font-size: 0.6rem;">${s}</span>`).join('')}
+                                                </div>` : ''}
+                                            </div>
+                                            <div class="card-footer bg-white border-0 pt-0 pb-3">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <span class="small text-primary fw-bold">Full Curriculum <i class="fas fa-arrow-right ms-1" style="font-size: 0.7rem;"></i></span>
+                                                    <i class="fas fa-info-circle text-muted opacity-50"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        });
+
+        // NEW: Fetch and Render Static-Dynamic Roadmap from roadmaps.json
+        const primaryRole = (gp.roles && gp.roles.length > 0) ? gp.roles[0].role : null;
+        const userSkills = gp.career_overview?.core_skills || [];
+
+        if (primaryRole) {
+            console.log(`Fetching curated roadmap for: ${primaryRole}`);
+            fetch('/api/roadmap', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    role: primaryRole,
+                    skills: userSkills
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.error) {
+                    console.log("Curated roadmap found successfully");
+                    renderRoadmapPhase('roadmapShortTerm', data.short_term, 'bg-primary');
+                    renderRoadmapPhase('roadmapMediumTerm', data.medium_term, 'bg-success');
+                    renderRoadmapPhase('roadmapLongTerm', data.long_term, 'bg-info');
+                } else {
+                    // Fallback to AI generated roadmap if no static one exists
+                    console.log("No static roadmap found, falling back to AI generated one");
+                    if (gp.career_roadmap) {
+                        renderRoadmapPhase('roadmapShortTerm', gp.career_roadmap.short_term, 'bg-primary');
+                        renderRoadmapPhase('roadmapMediumTerm', gp.career_roadmap.medium_term, 'bg-success');
+                        renderRoadmapPhase('roadmapLongTerm', gp.career_roadmap.long_term, 'bg-info');
+                    }
+                }
+            })
+            .catch(err => {
+                console.error("Roadmap Fetch Error:", err);
+                if (gp.career_roadmap) {
+                    renderRoadmapPhase('roadmapShortTerm', gp.career_roadmap.short_term, 'bg-primary');
+                    renderRoadmapPhase('roadmapMediumTerm', gp.career_roadmap.medium_term, 'bg-success');
+                    renderRoadmapPhase('roadmapLongTerm', gp.career_roadmap.long_term, 'bg-info');
+                }
+            });
+        } else if (gp.career_roadmap) {
+            renderRoadmapPhase('roadmapShortTerm', gp.career_roadmap.short_term, 'bg-primary');
+            renderRoadmapPhase('roadmapMediumTerm', gp.career_roadmap.medium_term, 'bg-success');
+            renderRoadmapPhase('roadmapLongTerm', gp.career_roadmap.long_term, 'bg-info');
+        }
+    }
+    function renderRoadmapPhase(elementId, phaseData, colorClass) {
+        const container = document.getElementById(elementId);
+        if (!phaseData) {
+            container.innerHTML = '<p class="text-muted small p-3">Phase data not generated.</p>';
+            return;
+        }
+
+        const mission       = phaseData.mission || '';
+        const focusAreas    = phaseData.focus_areas || phaseData.skills_to_learn || phaseData.skills || [];
+        const dailyRitual   = phaseData.daily_ritual || phaseData.daily_practice || '';
+        const hero          = phaseData.hero_project || null;
+        const salaryUnlock  = phaseData.salary_unlock || '';
+        const pitch         = phaseData.candidate_pitch || '';
+        const story         = phaseData.candidate_story || pitch; // fallback to pitch if story missing
+        const outcomes      = phaseData.outcomes || phaseData.outcome || [];
+        const goal          = phaseData.goal || '';
+        const projectsCount = phaseData.projects_count || '';
+        const whatToDo      = phaseData.what_to_do || [];
+        const suggestedWork = phaseData.suggested_work || phaseData.projects_to_build || phaseData.projects || [];
+
+        // --- Definition of Done badge ---
+        const dodMap = {
+            'Internship Ready': { cls: 'phase-1', icon: '🎓', label: 'Definition of Done: Internship Ready' },
+            'Full-Time Job Ready': { cls: 'phase-2', icon: '💼', label: 'Definition of Done: Full-Time Job Ready' },
+            'Senior / Specialist Path Ready': { cls: 'phase-3', icon: '🏅', label: 'Definition of Done: Senior Path Ready' }
+        };
+        const dod = dodMap[goal] || { cls: 'phase-1', icon: '✅', label: `Definition of Done: ${goal}` };
+        const dodHtml = goal ? `<div class="dod-badge ${dod.cls}"><span>${dod.icon}</span><span>${dod.label}</span></div>` : '';
+
+        // --- Hero Project Card ---
+        const heroHtml = hero ? `
+            <div class="hero-project-card">
+                <div class="hero-badge-pill"><span>🏆</span><span>Hero Project · Resume Star</span></div>
+                <h6 class="fw-bold text-dark mb-2" style="font-size:1rem;">${hero.name || 'Capstone Project'}</h6>
+                <p class="small text-secondary mb-3" style="line-height:1.6;">${hero.description || ''}</p>
+
+                ${hero.core_features && hero.core_features.length > 0 ? `
+                <div class="mb-3">
+                    <span class="small fw-bold text-dark text-uppercase" style="font-size:0.68rem; letter-spacing:0.6px;">📋 Core Features to Build</span>
+                    <ul class="list-unstyled mb-0 mt-2">
+                        ${hero.core_features.map(f => `<li class="small text-dark mb-1" style="padding-left:4px;"><i class="fas fa-check-square me-2" style="color:#ffc107;"></i>${f}</li>`).join('')}
+                    </ul>
+                </div>` : ''}
+
+                ${hero.tech_stack && hero.tech_stack.length > 0 ? `
+                <div class="d-flex flex-wrap gap-1 mb-3">
+                    ${hero.tech_stack.map(t => `<span class="badge text-white small" style="background:#2d3748;">${t}</span>`).join('')}
+                </div>` : ''}
+
+                ${hero.why_it_matters ? `
+                <div class="p-2 rounded" style="background:#fff9e6; border-left:3px solid #ffc107;">
+                    <span class="small fw-bold text-dark"><i class="fas fa-lightbulb me-1 text-warning"></i> Why This Lands You the Job:</span>
+                    <p class="small text-secondary mb-0 mt-1" style="line-height:1.5;">${hero.why_it_matters}</p>
+                </div>` : ''}
+            </div>
+        ` : '';
+
+        // --- Salary Unlock Indicator ---
+        const salaryHtml = salaryUnlock ? `
+            <div class="salary-unlock-card">
+                <div>
+                    <span class="salary-unlock-label">💰 Salary Unlock — Phase Complete</span>
+                    <span class="salary-unlock-amount">${salaryUnlock}</span>
+                </div>
+            </div>
+        ` : '';
+
+        // --- Candidate's Story ---
+        const storyHtml = story ? `
+            <div class="candidate-story-card">
+                <span class="small fw-bold text-uppercase" style="font-size:0.68rem; letter-spacing:0.6px; color:#6c757d;">🎤 Your Interview Story (Say This Out Loud)</span>
+                <p class="small fst-italic text-dark mt-2 mb-0" style="line-height:1.7; padding-left: 8px;">&ldquo;${story}&rdquo;</p>
+            </div>
+        ` : '';
+
+        container.innerHTML = `
+            ${dodHtml}
+
+            ${mission ? `
+            <div class="mb-3 p-3 rounded-3" style="background:#f0f4ff; border-left:4px solid #667eea;">
+                <span class="small fw-bold text-uppercase" style="font-size:0.68rem; letter-spacing:0.6px; color:#667eea;">🎯 Phase Mission</span>
+                <p class="small mb-0 text-dark mt-1" style="line-height:1.6;">${mission}</p>
+            </div>` : ''}
+
+            <div class="mb-4">
+                <span class="small fw-bold text-uppercase d-block mb-2" style="font-size:0.68rem; letter-spacing:0.6px; color:#4a5568;">📌 Rule of 3 — Focus Areas This Phase</span>
+                ${focusAreas.length > 0 ? focusAreas.map((s, i) => `
+                <div class="focus-area-item">
+                    <strong style="color:#667eea;">0${i+1}</strong>&nbsp;&nbsp;${s}
+                </div>`).join('') : '<div class="focus-area-item text-success fw-bold">✅ All CS Benchmarks Met!</div>'}
+            </div>
+
+            ${dailyRitual ? `
+            <div class="ritual-box">
+                <span class="ritual-label">⏰ Technical Daily Ritual — Do Not Skip</span>
+                ${dailyRitual}
+            </div>` : ''}
+
+            ${heroHtml}
+
+            ${whatToDo.length > 0 || suggestedWork.length > 0 ? `
+            <div class="mb-3">
+                <span class="small fw-bold text-uppercase d-block mb-2" style="font-size:0.68rem; letter-spacing:0.6px; color:#4a5568;">🧠 Action Plan</span>
+                <ul class="list-unstyled small mb-0">
+                    ${whatToDo.map(w => `<li class="mb-2"><i class="fas fa-arrow-right me-2 text-primary opacity-75"></i>${w}</li>`).join('')}
+                    ${suggestedWork.map(p => `<li class="mb-2"><i class="fas fa-code me-2 text-success opacity-75"></i>${p}</li>`).join('')}
+                    ${projectsCount ? `<li class="mb-2 text-success fw-bold"><i class="fas fa-folder me-2"></i>Projects to Complete: ${projectsCount}</li>` : ''}
+                </ul>
+            </div>` : ''}
+
+            <div class="mb-3">
+                <span class="small fw-bold text-uppercase d-block mb-2" style="font-size:0.68rem; letter-spacing:0.6px; color:#4a5568;">✅ What You'll Have At The End</span>
+                <ul class="list-unstyled outcomes-list mb-0 ps-0">
+                    ${outcomes.map(o => `<li><i class="fas fa-check-circle text-info opacity-75"></i><span>${o}</span></li>`).join('')}
+                </ul>
+            </div>
+
+            ${salaryHtml}
+            ${storyHtml}
+        `;
+    }
+</script>
+{% endblock %}

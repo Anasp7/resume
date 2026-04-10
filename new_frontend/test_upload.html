@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>Resume Upload Test</h1>
+    
+    <input type="file" id="fileInput" accept=".txt,.pdf,.docx">
+    <button onclick="testUpload()">Upload Resume</button>
+    
+    <div id="results"></div>
+    
+    <script>
+        async function testUpload() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                console.log('Uploading file:', file.name);
+                
+                // Test upload
+                const uploadResponse = await axios.post('/api/upload-resume', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+                
+                console.log('Upload response:', uploadResponse.data);
+                
+                if (uploadResponse.data.success) {
+                    document.getElementById('results').innerHTML = `
+                        <h3>✅ Upload Successful!</h3>
+                        <p>Filename: ${uploadResponse.data.filename}</p>
+                        <p>Character count: ${uploadResponse.data.char_count}</p>
+                        <p>Resume text preview: ${uploadResponse.data.resume_text.substring(0, 200)}...</p>
+                        
+                        <button onclick="testAnalysis('${uploadResponse.data.resume_text}')">Analyze Resume</button>
+                    `;
+                    
+                    // Store resume text for analysis
+                    window.resumeText = uploadResponse.data.resume_text;
+                } else {
+                    document.getElementById('results').innerHTML = `<h3>❌ Upload Failed</h3><p>${uploadResponse.data.error}</p>`;
+                }
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                document.getElementById('results').innerHTML = `<h3>❌ Upload Error</h3><p>${error.message}</p>`;
+            }
+        }
+        
+        async function testAnalysis(resumeText) {
+            try {
+                console.log('Analyzing resume...');
+                
+                const analysisResponse = await axios.post('/api/analyze-resume', {
+                    resume_text: resumeText
+                });
+                
+                console.log('Analysis response:', analysisResponse.data);
+                
+                if (analysisResponse.data.success) {
+                    const analysis = analysisResponse.data.analysis;
+                    document.getElementById('results').innerHTML += `
+                        <h3>✅ Analysis Complete!</h3>
+                        <p>Overall Score: ${Math.round(analysis.scores.overall_score)}/100</p>
+                        <p>ATS Score: ${Math.round(analysis.scores.ats_score)}/100</p>
+                        <p>Keyword Score: ${Math.round(analysis.scores.keyword_score)}/100</p>
+                        <p>Skills Found: ${analysis.structured_data.skills.total_count}</p>
+                        <p>Has Experience: ${analysis.structured_data.has_experience}</p>
+                        <p>Has Education: ${analysis.structured_data.has_education}</p>
+                        
+                        <h4>Issues Found:</h4>
+                        <ul>
+                            ${analysis.faults.map(fault => `<li>${fault.description}</li>`).join('')}
+                        </ul>
+                    `;
+                } else {
+                    document.getElementById('results').innerHTML += `<h3>❌ Analysis Failed</h3><p>${analysisResponse.data.error}</p>`;
+                }
+                
+            } catch (error) {
+                console.error('Analysis error:', error);
+                document.getElementById('results').innerHTML += `<h3>❌ Analysis Error</h3><p>${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
